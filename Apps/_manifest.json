@@ -1,0 +1,279 @@
+{
+  "schema_version": 1,
+  "appspaces": [
+    {
+      "name": "local_Apps",
+      "icon": "lucide:app-window",
+      "color": "#6fd6c4",
+      "sections": [
+        {
+          "name": "Automation",
+          "sort_name": "Automation",
+          "icon": "",
+          "color": "",
+          "sections": []
+        },
+        {
+          "name": "Developer Tools",
+          "sort_name": "Developer Tools",
+          "icon": "",
+          "color": "",
+          "sections": []
+        },
+        {
+          "name": "Files",
+          "sort_name": "Files",
+          "icon": "lucide:folder-search",
+          "color": "#c45c26",
+          "sections": []
+        },
+        {
+          "name": "Repositories",
+          "sort_name": "Repositories",
+          "icon": "",
+          "color": "",
+          "sections": []
+        },
+        {
+          "name": "Terminals",
+          "sort_name": "Terminals",
+          "icon": "lucide:app-window",
+          "color": "#6fd6c4",
+          "sections": []
+        }
+      ]
+    },
+    {
+      "name": "_meta",
+      "icon": "thesvg-color:meta",
+      "color": "",
+      "sections": [
+        {
+          "name": "sqlite",
+          "sort_name": "sqlite",
+          "icon": "lucide:database",
+          "color": "#0f766e",
+          "sections": []
+        },
+        {
+          "name": "testing",
+          "sort_name": "testing",
+          "icon": "lucide:flask-conical",
+          "color": "#3e8e7e",
+          "sections": [
+            {
+              "name": "blob Storage",
+              "sort_name": "blob Storage",
+              "icon": "lucide:box",
+              "color": "#0f766e",
+              "sections": []
+            },
+            {
+              "name": "sqlite",
+              "sort_name": "sqlite",
+              "icon": "lucide:database",
+              "color": "#0f766e",
+              "sections": []
+            }
+          ]
+        },
+        {
+          "name": "testing2",
+          "sort_name": "testing2",
+          "icon": "",
+          "color": "",
+          "sections": []
+        }
+      ]
+    }
+  ],
+  "apps": [
+    {
+      "id": "26-8-21-repos-cmux1",
+      "name": "cmux1",
+      "sort_name": "cmux1",
+      "description": "A local multi-terminal workspace with live activity and output previews.",
+      "updated": "2026-08-21",
+      "icon": "lucide:app-window",
+      "color": "#6fd6c4",
+      "appspace": "local_Apps",
+      "sections": [
+        "Terminals"
+      ],
+      "tags": [
+        "terminal",
+        "shell",
+        "cmux"
+      ],
+      "path": "26.8.21-repos/cmux1",
+      "url": "/apps/26.8.21-repos/cmux1/index.html",
+      "store": "",
+      "db": "",
+      "children": []
+    },
+    {
+      "id": "26-8-21-repos-files-i1",
+      "name": "files-i1",
+      "sort_name": "files-i1",
+      "description": "Pick a folder, then search, find, tree, and trash junk from it.",
+      "updated": "2026-08-23",
+      "icon": "lucide:folder-search",
+      "color": "#c45c26",
+      "appspace": "local_Apps",
+      "sections": [
+        "Files"
+      ],
+      "tags": [
+        "files",
+        "fd",
+        "ripgrep",
+        "cleanup"
+      ],
+      "path": "26.8.21-repos/files-i1",
+      "url": "/apps/26.8.21-repos/files-i1/index.html",
+      "store": "",
+      "db": "",
+      "children": []
+    },
+    {
+      "id": "26-8-21-repos-script-runner",
+      "name": "Script Runner",
+      "sort_name": "Script Runner",
+      "description": "Discover and run local scripts in draggable output windows.",
+      "updated": "2026-08-21",
+      "icon": "ph:terminal-window",
+      "color": "#6fd6c4",
+      "appspace": "local_Apps",
+      "sections": [
+        "Developer Tools"
+      ],
+      "tags": [
+        "scripts",
+        "automation",
+        "terminal",
+        "Deno"
+      ],
+      "path": "26.8.21-repos/script-runner",
+      "url": "/apps/26.8.21-repos/script-runner/index.html",
+      "store": "",
+      "db": "",
+      "children": []
+    },
+    {
+      "id": "26-8-21-repos-skills-i1",
+      "name": "Skills Hub",
+      "sort_name": "Skills Hub",
+      "description": "Browse a local skill library and install it into agent-specific skill folders.",
+      "updated": "2026-08-21",
+      "icon": "ph:books",
+      "color": "#1f4dff",
+      "appspace": "local_Apps",
+      "sections": [
+        "Developer Tools"
+      ],
+      "tags": [
+        "skills",
+        "agents",
+        "Claude",
+        "Cursor"
+      ],
+      "path": "26.8.21-repos/skills-i1",
+      "url": "/apps/26.8.21-repos/skills-i1/index.html",
+      "store": "",
+      "db": "",
+      "children": []
+    },
+    {
+      "id": "26-8-21-repos-terminal",
+      "name": "Terminal",
+      "sort_name": "Terminal",
+      "description": "A single-session shell against the same PTY backend as cmux1.",
+      "updated": "2026-08-21",
+      "icon": "lucide:terminal",
+      "color": "#6fd6c4",
+      "appspace": "local_Apps",
+      "sections": [
+        "Terminals"
+      ],
+      "tags": [
+        "terminal",
+        "shell",
+        "termlet"
+      ],
+      "path": "26.8.21-repos/terminal",
+      "url": "/apps/26.8.21-repos/terminal/index.html",
+      "store": "",
+      "db": "",
+      "children": []
+    },
+    {
+      "id": "26-8-20-todo1",
+      "name": "todo1",
+      "sort_name": "todo1",
+      "description": "A persistent todo list saved server-side through /api/data/.",
+      "updated": "2026-08-18",
+      "icon": "lucide:list-checks",
+      "color": "#00f0ff",
+      "appspace": "_meta",
+      "sections": [
+        "testing",
+        "blob Storage"
+      ],
+      "tags": [
+        "productivity",
+        "storage"
+      ],
+      "path": "26.8.20/todo1",
+      "url": "/apps/26.8.20/todo1/index.html",
+      "store": "todo1",
+      "db": "",
+      "children": []
+    },
+    {
+      "id": "26-8-20-todo2",
+      "name": "todo2",
+      "sort_name": "todo2",
+      "description": "A persistent todo list backed by Val Town SQLite.",
+      "updated": "2026-08-18",
+      "icon": "lucide:list-checks",
+      "color": "#0f766e",
+      "appspace": "_meta",
+      "sections": [
+        "testing",
+        "sqlite"
+      ],
+      "tags": [
+        "productivity",
+        "sqlite"
+      ],
+      "path": "26.8.20/todo2",
+      "url": "/apps/26.8.20/todo2/index.html",
+      "store": "todo2",
+      "db": "v1",
+      "children": []
+    },
+    {
+      "id": "26-8-20-todo3",
+      "name": "todo3",
+      "sort_name": "todo3",
+      "description": "A persistent todo list backed by Val Town SQLite.",
+      "updated": "2026-08-20",
+      "icon": "lucide:list-checks",
+      "color": "#0f766e",
+      "appspace": "_meta",
+      "sections": [
+        "testing",
+        "sqlite"
+      ],
+      "tags": [
+        "productivity",
+        "sqlite"
+      ],
+      "path": "26.8.20/todo3",
+      "url": "/apps/26.8.20/todo3/index.html",
+      "store": "todo3",
+      "db": "v1",
+      "children": []
+    }
+  ]
+}

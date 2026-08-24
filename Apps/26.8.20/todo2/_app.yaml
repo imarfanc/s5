@@ -1,0 +1,23 @@
+schema_version: 1
+
+name: todo2
+sort_name: todo2
+description: A persistent todo list backed by Val Town SQLite.
+updated: 2026-08-18
+
+icon: lucide:list-checks
+color: "#0f766e"
+
+appspace: _meta
+sections:
+  - testing
+  - sqlite
+tags:
+  - productivity
+  - sqlite
+
+store: todo2 # Namespace for this app's tables, so a folder rename keeps the data.
+db: v1 # Schema generation. Tables in schema.sql, queries in queries.sql.
+
+entry: index.html
+children: []

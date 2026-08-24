@@ -1,0 +1,14 @@
+name: "files-i1"
+description: "Pick a folder, then search, find, tree, and trash junk from it."
+updated: "2026-08-23"
+icon: "lucide:folder-search"
+color: "#c45c26"
+appspace: "local_Apps"
+sections:
+  - "Files"
+tags:
+  - files
+  - fd
+  - ripgrep
+  - cleanup
+entry: index.html

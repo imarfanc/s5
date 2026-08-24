@@ -1,0 +1,607 @@
+/* Google Fonts subsets its files by unicode-range and the box-drawing block
+   (U+2500–257F) is in none of those subsets, so a mono loaded from there
+   silently falls back to a system face for ╭─│┼ — which is exactly why tables
+   and boxes stop lining up. Load the complete, unsubsetted woff2 instead. */
+@font-face {
+  font-family: "JetBrains Mono";
+  font-weight: 400;
+  font-display: swap;
+  src: url("https://cdn.jsdelivr.net/gh/JetBrains/JetBrainsMono@2.304/fonts/webfonts/JetBrainsMono-Regular.woff2")
+    format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-weight: 700;
+  font-display: swap;
+  src: url("https://cdn.jsdelivr.net/gh/JetBrains/JetBrainsMono@2.304/fonts/webfonts/JetBrainsMono-Bold.woff2")
+    format("woff2");
+}
+:root {
+  font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--ink);
+  background: var(--bg);
+  /* The output pane is a terminal wherever it appears, so it keeps its own
+     palette rather than inheriting the app chrome's. */
+  --terminal: #0d1117;
+  --terminal-ink: #e6edf3;
+  --terminal-rule: rgba(255, 255, 255, 0.13);
+  --terminal-faint: #626c82;
+  --terminal-font: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --facet-w: 240px;
+  --scripts-w: 320px;
+  --workspace-w: 0px;
+}
+/* Two palettes, one decision. app.js resolves "system" against the OS and
+   writes data-theme before first paint, so the stylesheet only ever deals with
+   a value that has already been decided. */
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #dce3ed;
+  --bg: #090b0f;
+  --rule: #242a34;
+  --rule-strong: #343c49;
+  --panel: #10141b;
+  --raised: #171c25;
+  --sunken: #0b0e13;
+  --hover: #29303c;
+  --muted: #7e8999;
+  --faint: #434c59;
+  --accent: #6fd6c4;
+  --accent-wash: rgba(111, 214, 196, 0.1);
+  --danger: #ff7b72;
+  --danger-ink: #ef9b9b;
+  --danger-rule: #5e3035;
+  --window-shadow: 0 16px 50px #0009;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --ink: #1b2028;
+  --bg: #eef0f4;
+  --rule: #d9dee6;
+  --rule-strong: #c2cad6;
+  --panel: #ffffff;
+  --raised: #e7ebf1;
+  --sunken: #f5f6f9;
+  --hover: #dde3ec;
+  --muted: #66707e;
+  --faint: #98a2b0;
+  --accent: #0d8a78;
+  --accent-wash: rgba(13, 138, 120, 0.12);
+  --danger: #c0392f;
+  --danger-ink: #a3312a;
+  --danger-rule: #e3b4b0;
+  --window-shadow: 0 16px 40px rgba(21, 26, 34, 0.18);
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  overflow: hidden;
+  background: var(--bg);
+}
+button,
+input {
+  font: inherit;
+}
+button {
+  color: inherit;
+}
+#app-shell {
+  display: grid;
+  grid-template-columns: var(--facet-w) var(--scripts-w) minmax(var(--workspace-w), 1fr);
+  min-width: calc(var(--facet-w) + var(--scripts-w) + var(--workspace-w));
+  height: 100dvh;
+}
+/* `b` steps from all panels, to scripts + workspace, to workspace only. */
+#app-shell[data-panels="scripts"] {
+  grid-template-columns: 0 var(--scripts-w) minmax(var(--workspace-w), 1fr);
+  min-width: calc(var(--scripts-w) + var(--workspace-w));
+}
+#app-shell[data-panels="none"] {
+  grid-template-columns: 0 0 minmax(var(--workspace-w), 1fr);
+  min-width: var(--workspace-w);
+}
+#facet-column,
+#script-column,
+#workspace-column {
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid var(--rule);
+  background: var(--panel);
+}
+#facet-column,
+#script-column {
+  display: flex;
+  flex-direction: column;
+}
+#app-header,
+#script-header,
+#workspace-header {
+  height: 54px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--rule);
+}
+#app-title {
+  margin: 0;
+  font-size: 15px;
+}
+#clear-filters,
+#script-detail,
+#panel-toggle,
+#minimize-all,
+#close-all {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+#clear-filters:hover,
+#script-detail:hover,
+#panel-toggle:hover,
+#minimize-all:hover,
+#close-all:hover {
+  color: var(--accent);
+}
+#minimize-all:disabled,
+#close-all:disabled {
+  color: var(--muted);
+  cursor: default;
+  opacity: .45;
+}
+#script-search {
+  margin: 12px;
+  padding: 8px 10px;
+  color: inherit;
+  background: var(--sunken);
+  border: 1px solid var(--rule);
+  outline: none;
+}
+#script-search:focus {
+  border-color: var(--accent);
+}
+#facet-controls,
+#script-list {
+  min-height: 0;
+  overflow: auto;
+}
+.facet {
+  padding: 5px 12px 12px;
+  border-bottom: 1px solid var(--rule);
+}
+.facet h2 {
+  margin: 8px 0;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.facet label {
+  display: flex;
+  gap: 8px;
+  padding: 3px 0;
+  cursor: pointer;
+}
+.facet-count {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 11px;
+}
+.facet input {
+  accent-color: var(--accent);
+}
+#diagnostics {
+  margin: 12px;
+  padding: 10px;
+  color: var(--danger-ink);
+  border: 1px solid var(--danger-rule);
+  white-space: pre-wrap;
+}
+#script-header span,
+#workspace-header span {
+  color: var(--muted);
+  font-size: 11px;
+}
+/* Sits in the list's own rhythm rather than on a fill, so the column stays quiet. */
+.script-group {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 14px 6px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: var(--panel);
+  border-bottom: 1px solid var(--rule);
+}
+.script-group-count {
+  margin-left: auto;
+  letter-spacing: 0;
+}
+.script-row {
+  display: grid;
+  grid-template-columns: 28px 1fr 26px;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 14px;
+  color: inherit;
+  text-align: left;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  background: transparent;
+  cursor: default;
+  user-select: none;
+}
+.script-row:hover,
+.script-row[aria-selected="true"] {
+  background: var(--raised);
+}
+.script-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.script-name,
+.script-description,
+.script-meta {
+  grid-column: 2;
+}
+/* Icon-only: it sits on the row the whole time, so a label would be noise. */
+.script-run {
+  grid-row: 1;
+  grid-column: 3;
+  align-self: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s, color 0.12s, background 0.12s;
+}
+.script-row:hover .script-run,
+.script-row:focus-within .script-run,
+.script-row[aria-selected="true"] .script-run {
+  opacity: 1;
+}
+.script-run:hover {
+  color: var(--script-color, white);
+  background: var(--hover);
+}
+.script-run:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.script-icon {
+  grid-row: 1 / span 3;
+  font-size: 18px;
+  color: var(--script-color);
+}
+#script-header {
+  justify-content: flex-start;
+}
+#script-count {
+  margin-left: auto;
+}
+#script-column[data-detail="title"] .script-row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  align-items: center;
+}
+#script-column[data-detail="title"] .script-icon {
+  grid-row: auto;
+}
+#script-column[data-detail="title"] .script-run {
+  grid-row: auto;
+}
+.script-name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 700;
+}
+.script-row[data-ran="true"] {
+  box-shadow: inset 2px 0 var(--script-color);
+}
+.script-ran {
+  flex: none;
+  color: var(--script-color);
+  font-size: 11px;
+}
+.script-description {
+  color: var(--muted);
+  font-size: 11px;
+}
+.script-meta {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.pill {
+  padding: 1px 5px;
+  color: var(--muted);
+  background: var(--sunken);
+  border: 1px solid var(--rule);
+  font-size: 10px;
+}
+#workspace-column {
+  position: relative;
+  background: var(--sunken);
+  overflow: hidden;
+}
+#workspace-header {
+  position: relative;
+  z-index: 99999;
+  justify-content: flex-start;
+  background: var(--panel);
+}
+#workspace-header span {
+  margin-left: auto;
+}
+#window-layer {
+  position: absolute;
+  inset: 54px 0 0;
+  overflow: hidden;
+}
+#workspace-empty {
+  position: absolute;
+  inset: 45% 0 auto;
+  margin: 0;
+  color: var(--faint);
+  text-align: center;
+}
+#help-modal {
+  min-width: 320px;
+  padding: 18px 22px;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--rule-strong);
+  box-shadow: var(--window-shadow);
+}
+#help-modal::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+#help-modal h2 {
+  margin: 0 0 12px;
+  font-size: 13px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+#help-modal dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 7px 16px;
+  margin: 0;
+}
+#help-modal dt {
+  text-align: right;
+}
+#help-modal dd {
+  margin: 0;
+}
+#help-modal kbd {
+  padding: 1px 6px;
+  background: var(--sunken);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  font: inherit;
+  white-space: nowrap;
+}
+#help-modal form {
+  margin-top: 14px;
+  text-align: right;
+}
+#help-modal button {
+  padding: 4px 12px;
+  color: var(--muted);
+  background: var(--raised);
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  cursor: pointer;
+}
+#help-modal button:hover {
+  color: var(--accent);
+}
+.run-window {
+  position: absolute;
+  display: grid;
+  grid-template-rows: 38px auto minmax(0, 1fr);
+  min-width: 280px;
+  min-height: 180px;
+  overflow: hidden;
+  resize: both;
+  background: var(--panel);
+  border: 1px solid var(--rule-strong);
+  box-shadow: var(--window-shadow);
+}
+.run-window.is-minimized {
+  height: 38px !important;
+  min-height: 38px;
+  resize: none;
+}
+.run-window.is-maximized {
+  inset: 8px !important;
+  width: auto !important;
+  height: auto !important;
+  resize: none;
+}
+.window-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 7px 0 10px;
+  background: var(--raised);
+  border-bottom: 1px solid var(--rule-strong);
+  cursor: move;
+  user-select: none;
+}
+.window-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.window-status {
+  color: var(--muted);
+  font-size: 10px;
+}
+.window-action {
+  width: 25px;
+  height: 25px;
+  padding: 0;
+  border: 0;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+}
+.window-action:hover {
+  color: white;
+  background: var(--hover);
+}
+/* Always present, so it reads as the window's own row of tabs rather than as
+   chrome that appears only when a script happens to have more than one file. */
+.file-tabs {
+  flex: none;
+  display: flex;
+  gap: 2px;
+  padding: 6px 10px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: var(--terminal);
+}
+.file-tabs::-webkit-scrollbar {
+  display: none;
+}
+.file-tabs button {
+  height: 24px;
+  padding: 0 9px;
+  font: inherit;
+  font-size: 11px;
+  white-space: nowrap;
+  color: var(--terminal-faint);
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+.file-tabs button:hover {
+  color: var(--terminal-ink);
+}
+.file-tabs button[aria-selected="true"] {
+  color: var(--accent);
+  background: var(--accent-wash);
+}
+.file-tabs button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.tab-notice {
+  margin-left: auto;
+  align-self: center;
+  padding-right: 4px;
+  font-size: 11px;
+  color: var(--danger);
+}
+.window-output {
+  /* line-height must stay exactly 1 — box-drawing glyphs only join seamlessly
+     when the line box equals the glyph em. */
+  line-height: 1;
+  margin: 0;
+  padding: 14px 16px 28px;
+  flex: 1;
+  min-height: 0;
+  color: var(--terminal-ink);
+  background: var(--terminal);
+  font-family: var(--terminal-font);
+  font-size: 12px;
+  font-variant-ligatures: none;
+  white-space: pre;
+  tab-size: 4;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--terminal-rule) transparent;
+}
+.window-output::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.window-output::-webkit-scrollbar-thumb {
+  background: var(--terminal-rule);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+/* Source is read, not aligned: box-drawing does not apply, so give code the
+   leading it needs instead of the terminal's exact-em line box. */
+.window-output.is-source {
+  line-height: 1.5;
+  padding-top: 10px;
+}
+.window-output.is-source code {
+  font: inherit;
+}
+.tok-comment {
+  color: #7b8496;
+  font-style: italic;
+}
+.tok-string {
+  color: #9ecb8a;
+}
+.tok-number {
+  color: #d3a2f0;
+}
+.tok-keyword {
+  color: #f0a8c0;
+}
+.tok-variable {
+  color: #8ec7f0;
+}
+.tok-key {
+  color: #f4c07a;
+}
+.window-output.is-running::after {
+  content: "▌";
+  color: var(--accent);
+  animation: caret 1s step-end infinite;
+}
+@keyframes caret {
+  50% {
+    opacity: 0;
+  }
+}
+.output-hint {
+  color: var(--terminal-faint);
+}
+.ansi-bold {
+  font-weight: 700;
+}
+.ansi-italic {
+  font-style: italic;
+}
+.ansi-dim {
+  opacity: 0.72;
+}
+@media (max-width: 900px) {
+  body {
+    overflow: auto;
+  }
+}

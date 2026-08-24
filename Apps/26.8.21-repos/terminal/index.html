@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Terminal</title>
+  <link rel="stylesheet" href="/apps/_shared/1-repos/xterm.css" />
+  <style>
+    :root {
+      color-scheme: light dark;
+      --accent: #6fd6c4;
+      --canvas: #0b0e13;
+      --raised: #12161d;
+      --inset: #090c10;
+      --line: rgba(255, 255, 255, 0.07);
+      --line-strong: rgba(255, 255, 255, 0.14);
+      --text: #e6ebf2;
+      --text-2: #a5b0bf;
+      --text-3: #6d7987;
+      --phosphor: var(--accent);
+      --btn-2: #171c24;
+      --r-sm: 5px;
+      --font-ui: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --font-term: "cmux1 Mono", "MesloLGS Nerd Font Mono", "Hack Nerd Font Mono",
+        "Apple Color Emoji", Menlo, Monaco, ui-monospace, monospace;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --accent: #168c7d;
+        --canvas: #f4f6f8;
+        --raised: #ffffff;
+        --inset: #e9edf1;
+        --line: rgba(18, 27, 38, 0.11);
+        --line-strong: rgba(18, 27, 38, 0.20);
+        --text: #17202b;
+        --text-2: #465363;
+        --text-3: #5f6c7a;
+        --phosphor: #168c7d;
+        --btn-2: #e9edf1;
+      }
+    }
+
+    @font-face {
+      font-family: "cmux1 Mono";
+      src: url("/api/apps/1-repos/font") format("truetype");
+      font-display: block;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      display: flex;
+      flex-direction: column;
+      background: var(--canvas);
+      color: var(--text);
+      font: 13px/1.4 var(--font-ui);
+      -webkit-font-smoothing: antialiased;
+    }
+    #bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: var(--raised);
+    }
+    #host {
+      color: var(--text-2);
+      font: 13px var(--font-term);
+    }
+    #bar button {
+      padding: 6px 12px;
+      border: 0;
+      border-radius: var(--r-sm);
+      background: var(--phosphor);
+      color: var(--canvas);
+      font: 500 13px var(--font-ui);
+      cursor: pointer;
+    }
+    #bar button:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+    #bar button.secondary {
+      background: var(--btn-2);
+      color: var(--text);
+      border: 1px solid var(--line-strong);
+    }
+    #bar #prompt {
+      display: grid;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      background: var(--btn-2);
+      color: var(--text);
+      border: 1px solid var(--line-strong);
+    }
+    #bar #prompt svg { width: 16px; height: 16px; display: none; }
+    #bar #prompt[data-style="native"] .i-native,
+    #bar #prompt[data-style="blocks"] .i-blocks,
+    #bar #prompt[data-style="arrow"] .i-arrow { display: block; }
+    #bar #prompt .i-blocks rect:nth-child(1) { fill: #6fd6c4; }
+    #bar #prompt .i-blocks rect:nth-child(2) { fill: #f4b8c5; }
+    #bar #prompt .i-blocks rect:nth-child(3) { fill: #e8d5a3; }
+    #status { color: var(--text-3); margin-left: auto; font-family: var(--font-term); font-size: 12px; }
+    #screen {
+      flex: 1;
+      min-height: 0;
+      padding: 10px 12px;
+      background: var(--inset);
+    }
+    #screen .xterm { height: 100%; }
+    #screen .xterm-viewport { overflow-y: auto !important; }
+  </style>
+</head>
+<body>
+  <!--
+    Same protocol as cmux1, same backend at /api/apps/1-repos:
+      1. Open  ws(s)://HOST/api/apps/1-repos/terminal?cols=N&rows=M&prompt=native|blocks|arrow
+      2. On open (and on resize) send a control frame:
+           "\x1e" + JSON.stringify({ cols, rows })
+      3. Everything else you send is raw shell input (keys as they are).
+      4. Everything the server sends is raw shell output (ANSI and all).
+      5. Closing the socket kills that shell.
+  -->
+  <div id="bar">
+    <span id="host"></span>
+    <button id="connect" type="button">Connect</button>
+    <button id="disconnect" class="secondary" type="button" disabled>Disconnect</button>
+    <button id="prompt" type="button" data-style="native" title="Prompt: native" aria-label="Prompt style native. Click to cycle.">
+      <svg class="i-native" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 17l6-6-6-6" />
+        <path d="M12 19h8" />
+      </svg>
+      <svg class="i-blocks" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="2" y="7" width="6" height="10" rx="1" />
+        <rect x="9" y="7" width="6" height="10" rx="1" />
+        <rect x="16" y="7" width="6" height="10" rx="1" />
+      </svg>
+      <svg class="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M5 12h14" />
+        <path d="m13 6 6 6-6 6" />
+      </svg>
+    </button>
+    <span id="status">idle</span>
+  </div>
+  <div id="screen" aria-label="Terminal"></div>
+
+  <script src="/apps/_shared/1-repos/xterm.js"></script>
+  <script src="/apps/_shared/1-repos/xterm-addon-fit.js"></script>
+  <script>
+  const RESIZE = "\x1e";
+  const FACE =
+    '"cmux1 Mono", "MesloLGS Nerd Font Mono", "Hack Nerd Font Mono", Menlo, Monaco, ui-monospace, monospace';
+
+  const darkTheme = {
+    background: "#090c10",
+    foreground: "#e6ebf2",
+    cursor: "#6fd6c4",
+    cursorAccent: "#090c10",
+    selectionBackground: "rgba(111,214,196,0.22)",
+    black: "#12161d",
+    red: "#e08b8b",
+    green: "#8fd6a8",
+    yellow: "#e2c98b",
+    blue: "#8fb6e0",
+    magenta: "#c4a2dd",
+    cyan: "#6fd6c4",
+    white: "#c5cdd8",
+    brightBlack: "#495260",
+    brightWhite: "#f2f5f9",
+  };
+  const lightTheme = {
+    background: "#e9edf1",
+    foreground: "#17202b",
+    cursor: "#168c7d",
+    cursorAccent: "#e9edf1",
+    selectionBackground: "rgba(22,140,125,0.22)",
+    black: "#26313d",
+    red: "#b84d5d",
+    green: "#367d4e",
+    yellow: "#8a6b16",
+    blue: "#326da8",
+    magenta: "#8157a3",
+    cyan: "#168c7d",
+    white: "#d7dde3",
+    brightBlack: "#6d7987",
+    brightRed: "#a83f50",
+    brightGreen: "#2f7547",
+    brightYellow: "#765807",
+    brightBlue: "#3978b8",
+    brightMagenta: "#765096",
+    brightCyan: "#087c70",
+    brightWhite: "#ffffff",
+  };
+
+  const appearance = matchMedia("(prefers-color-scheme: light)");
+  const currentTheme = () => appearance.matches ? lightTheme : darkTheme;
+
+  const hostEl = document.getElementById("host");
+  const connectBtn = document.getElementById("connect");
+  const disconnectBtn = document.getElementById("disconnect");
+  const promptBtn = document.getElementById("prompt");
+  const statusEl = document.getElementById("status");
+  const screen = document.getElementById("screen");
+
+  const PROMPT_STYLES = ["native", "blocks", "arrow"];
+  const PROMPT_KEY = "terminal.prompt.v1";
+  let promptStyle = loadPromptStyle();
+  let cycling = false;
+  let socket = null;
+  let term = null;
+  let fit = null;
+
+  function setStatus(text) {
+    statusEl.textContent = text;
+  }
+
+  function setConnected(on) {
+    connectBtn.disabled = on;
+    disconnectBtn.disabled = !on;
+  }
+
+  function loadPromptStyle() {
+    try {
+      const saved = localStorage.getItem(PROMPT_KEY);
+      if (PROMPT_STYLES.includes(saved)) return saved;
+    } catch {
+      // Private mode, or storage is full.
+    }
+    return "native";
+  }
+
+  function paintPromptButton() {
+    promptBtn.dataset.style = promptStyle;
+    promptBtn.title = "Prompt: " + promptStyle;
+    promptBtn.setAttribute(
+      "aria-label",
+      "Prompt style " + promptStyle + ". Click to cycle.",
+    );
+  }
+
+  function cyclePromptStyle() {
+    promptStyle = PROMPT_STYLES[(PROMPT_STYLES.indexOf(promptStyle) + 1) % PROMPT_STYLES.length];
+    try {
+      localStorage.setItem(PROMPT_KEY, promptStyle);
+    } catch {
+      // Ignore a failed persist; the click still takes effect this session.
+    }
+    paintPromptButton();
+    if (!socket) return;
+    cycling = true;
+    socket.close();
+  }
+
+  function disposeTerm() {
+    term?.dispose();
+    term = null;
+    fit = null;
+    screen.replaceChildren();
+  }
+
+  function sendResize() {
+    if (!socket || socket.readyState !== WebSocket.OPEN || !term) return;
+    socket.send(RESIZE + JSON.stringify({ cols: term.cols, rows: term.rows }));
+  }
+
+  async function connect() {
+    if (socket) return;
+    disposeTerm();
+    try {
+      await document.fonts.load('12px "cmux1 Mono"');
+    } catch {
+      // ~/Library/Fonts had no Nerd Font; ASCII still renders from the fallbacks.
+    }
+
+    term = new Terminal({
+      fontFamily: FACE,
+      fontSize: 12,
+      lineHeight: 1.15,
+      letterSpacing: 0,
+      cursorBlink: true,
+      cursorStyle: "bar",
+      cursorWidth: 1,
+      rescaleOverlappingGlyphs: true,
+      allowProposedApi: true,
+      theme: currentTheme(),
+    });
+    fit = new FitAddon.FitAddon();
+    term.loadAddon(fit);
+    term.open(screen);
+    fit.fit();
+
+    const proto = location.protocol === "https:" ? "wss" : "ws";
+    const url =
+      `${proto}://${location.host}/api/apps/1-repos/terminal?cols=${term.cols}&rows=${term.rows}&prompt=${promptStyle}`;
+    setStatus("connecting…");
+    setConnected(true);
+    socket = new WebSocket(url);
+
+    term.onResize(sendResize);
+    term.onData((data) => {
+      if (socket && socket.readyState === WebSocket.OPEN) socket.send(data);
+    });
+
+    socket.onopen = () => {
+      setStatus("connected");
+      sendResize();
+      term.focus();
+    };
+    socket.onmessage = (event) => term.write(String(event.data));
+    socket.onclose = () => {
+      socket = null;
+      setConnected(false);
+      if (cycling) {
+        cycling = false;
+        connect();
+        return;
+      }
+      setStatus("disconnected");
+      term?.write("\r\n[session closed]\r\n");
+    };
+    socket.onerror = () => setStatus("error");
+  }
+
+  function disconnect() {
+    socket?.close();
+  }
+
+  appearance.addEventListener("change", () => {
+    if (term) term.options.theme = currentTheme();
+    parent.postMessage({ type: "gallery-preview-bg-changed" }, "*");
+  });
+
+  addEventListener("resize", () => fit?.fit());
+
+  connectBtn.onclick = connect;
+  disconnectBtn.onclick = disconnect;
+  promptBtn.onclick = cyclePromptStyle;
+  paintPromptButton();
+
+  fetch("/api/apps/1-repos/config")
+    .then((r) => r.json())
+    .then((c) => {
+      hostEl.textContent = c.host || location.host;
+    })
+    .catch(() => {
+      hostEl.textContent = location.host;
+    });
+  </script>
+</body>
+</html>

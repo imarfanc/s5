@@ -1,0 +1,54 @@
+# Hand-edited presentation for the appspace switcher and the section tree.
+# Add or change sort_name, Iconify icon, and color values, then restart the dev server
+# (`deno task dev`) — discovery is cached per process and Apps/ is not watched.
+# After adding an icon name that is not already vendored, run `deno task icons`.
+schema_version: 1
+
+# Per-appspace presentation. The appspace name is whatever the app's
+# `_app.yaml` declares in its `appspace:` field. Anything not listed here
+# falls back to the default widget icon and no colour.
+appspaces:
+  - name: "_meta"
+    icon: "thesvg-color:meta"
+    color: ""
+  - name: "local_Apps"
+    icon: "lucide:app-window"
+    color: "#6fd6c4"
+
+sections:
+  - name: "Terminals"
+    icon: "lucide:app-window"
+    color: "#6fd6c4"
+  - name: "testing"
+    icon: "lucide:flask-conical"
+    color: "#3e8e7e"
+  - name: "one"
+    sort_name: "111"
+    icon: "lucide:rocket"
+    color: "#00f0ff"
+  - name: "two"
+    sort_name: "222"
+    icon: "lucide:rocket"
+    color: "#0f766e"
+  - name: "three"
+    sort_name: "333"
+    icon: "lucide:rocket"
+    color: "#3e8e7e"
+  - name: "blob Storage"
+    icon: "lucide:box"
+    color: "#0f766e"
+  - name: "sqlite"
+    icon: "lucide:database"
+    color: "#0f766e"
+  - name: "Tasks"
+    icon: "lucide:list-checks"
+    color: "#b45309"
+  - name: "Notes"
+    icon: "lucide:notebook-pen"
+    color: "#0b6b3a"
+  - name: "Money"
+    icon: "lucide:chart-candlestick"
+    color: "#f2673a"
+  - name: "Files"
+    icon: "lucide:folder-search"
+    color: "#c45c26"

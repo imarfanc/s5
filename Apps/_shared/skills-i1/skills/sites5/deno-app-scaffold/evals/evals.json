@@ -1,0 +1,57 @@
+{
+  "skill_name": "deno-app-scaffold",
+  "evals": [
+    {
+      "id": 0,
+      "name": "new-server-app",
+      "prompt": "I want to start a new deno project called `feed-reader` \u2014 small local web app, it'll poll a few RSS urls and show them in a browser. Set the repo up for me the way I like my deno stuff: task menu, dev/start with the browser hotkeys, the whole check task. Put it in ./feed-reader. Don't build the actual RSS logic yet, I just want the skeleton to be right and passing.",
+      "expected_output": "A ./feed-reader repo with deno.json (choose/dev/start/test/check/git:history), _other/scripts/{style,config,icons,choose,choose-lib,serve,git-history}.ts, src/{main,config,server}.ts, src/tests/, AGENTS.md, README.md. `deno task check` passes. Port defined only in _other/scripts/config.ts. No raw ANSI escapes outside style.ts.",
+      "files": [],
+      "assertions": [
+        "`deno task check` exists and passes",
+        "`deno task choose` is the task menu entry point",
+        "Developer scripts live in `_other/scripts/`",
+        "A shared `_other/scripts/style.ts` is the only file writing ANSI colour escapes",
+        "The menu's task list matches `deno.json` exactly",
+        "Tests live in `src/tests/`",
+        "The port literal is owned by one module (env fallbacks excepted)",
+        "A supervisor prints a startup banner and owns browser hotkeys"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "cli-only-app",
+      "prompt": "new deno cli called `dirsize` that walks a folder and prints the biggest subdirectories as a little table. i want it scaffolded like my other repos (the deno task choose menu, one check command, shared terminal colors) but its not a server so no localhost stuff please. ./dirsize",
+      "expected_output": "A ./dirsize repo following the conventions with serve.ts, src/server.ts, public/ and the dev/start tasks removed, choose-lib TASKS matching deno.json exactly, output styled via _other/scripts/style.ts, and `deno task check` passing.",
+      "files": [],
+      "assertions": [
+        "`deno task check` exists and passes",
+        "`deno task choose` is the task menu entry point",
+        "Developer scripts live in `_other/scripts/`",
+        "A shared `_other/scripts/style.ts` is the only file writing ANSI colour escapes",
+        "The menu's task list matches `deno.json` exactly",
+        "Tests live in `src/tests/`",
+        "No server leftovers: no port, localhost, serve.ts, or public/ in a CLI app"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "retrofit-existing-repo",
+      "prompt": "here's an old side project of mine (notes-api). can you bring it in line with how my newer deno repos are set up? the task names are all over the place and i've got the port hardcoded in two files. don't change what the api actually does.",
+      "files": [
+        "notes-api"
+      ],
+      "expected_output": "notes-api keeps its /notes behavior and Note types, but gains _other/scripts/ with the chooser + style module, the standard task names (choose/dev/start/test/check), port defined in exactly one place, tools/seed.ts ANSI escapes replaced with style.ts helpers, tests moved to src/tests/, and `deno task check` passing.",
+      "assertions": [
+        "`deno task check` exists and passes",
+        "`deno task choose` is the task menu entry point",
+        "Developer scripts live in `_other/scripts/`",
+        "A shared `_other/scripts/style.ts` is the only file writing ANSI colour escapes",
+        "The menu's task list matches `deno.json` exactly",
+        "Tests live in `src/tests/`",
+        "The port literal is owned by one module (env fallbacks excepted)",
+        "The API's behaviour and data are unchanged"
+      ]
+    }
+  ]
+}

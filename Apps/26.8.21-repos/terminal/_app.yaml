@@ -1,0 +1,13 @@
+name: "Terminal"
+description: "A single-session shell against the same PTY backend as cmux1."
+updated: "2026-08-21"
+icon: "lucide:terminal"
+color: "#6fd6c4"
+appspace: "local_Apps"
+sections:
+  - "Terminals"
+tags:
+  - terminal
+  - shell
+  - termlet
+entry: index.html

@@ -1,0 +1,24 @@
+schema_version: 1
+
+name: todo1
+sort_name: todo1
+description: A persistent todo list saved server-side through /api/data/.
+updated: 2026-08-18
+
+icon: lucide:list-checks
+color: "#00f0ff"
+
+appspace: _meta
+sections:
+  - testing
+  - blob Storage
+tags:
+  - productivity
+  - storage
+
+# Namespace for /api/data/ storage. Independent of the folder path so a rename
+# does not orphan saved data.
+store: todo1
+
+entry: index.html
+children: []

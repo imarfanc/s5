@@ -1,0 +1,11 @@
+# macOS
+.DS_Store
+
+# Local secrets (T1_PASSWORD). Committed as .env.example instead.
+.env
+
+# Keep `_other/blob/` and `_other/sqlite/apps.db` in git. They are local seed
+# data; Val Town has the blob store and val SQLite instead. Do not ignore those
+# directories. Only the WAL sidecars are runtime junk.
+_other/sqlite/apps.db-shm
+_other/sqlite/apps.db-wal

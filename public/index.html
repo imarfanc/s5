@@ -1,0 +1,2034 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>s5</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <style>
+    :root {
+      /* ---- Tuning -----------------------------------------------------
+         Every dial the sidebar's feel depends on. Change a value here
+         rather than hunting for the literal it replaced — the rules below
+         are written in terms of these.
+
+         Row size
+           --row-pad-y     taller rows, easier to click. ~6px compact,
+                           9px default, 12px+ roomy. The padding lives on
+                           the inner button, so the whole row stays a real
+                           hit target at any value.
+           --row-pad-x     indents the icon from the left edge.
+           --row-gap       space between top-level rows.
+           --row-gap-tight the same, between rows inside a section.
+           --row-radius    corner rounding on hover and active rows.
+
+         Tree shape
+           --tree-indent   how far each nesting level steps right.
+           --tree-rail-gap space between a section's guide rail and its rows.
+                           These two are the roomy step; `d` cycles the
+                           sidebar through the tighter ones, which override
+                           them per #sidebar[data-indent] further down.
+           --pane-pad      padding around the sidebar header and the tree.
+
+         Sizes
+           --sidebar-w     default width. --sidebar-w2 is the wide step.
+           --toggle-size   the floating round button, bottom left.
+           --toggle-inset  its distance from the corner. The tree's bottom
+                           padding is derived from both, so the last row can
+                           always be scrolled clear of the button.
+
+         Motion and glass
+           --ease          one duration and curve, shared by the sidebar
+                           width, the mobile slide, and the chevron.
+           --glass-blur    backdrop blur radius.
+           --glass-saturate how much punch the blur keeps.
+
+         The mobile breakpoint is deliberately NOT here: CSS variables are
+         not allowed inside @media queries. It is 900px in the query at the
+         bottom of this stylesheet and in MOBILE_QUERY in the script below.
+         Change both together. */
+      --row-pad-y: 9px;
+      --row-pad-x: 8px;
+      --row-gap: 2px;
+      --row-gap-tight: 1px;
+      --row-radius: 6px;
+
+      --tree-indent: 22px;
+      --tree-rail-gap: 8px;
+      --pane-pad: 8px;
+
+      --sidebar-w: 16rem;
+      --sidebar-w2: 24rem;
+      --toggle-size: 46px;
+      --toggle-inset: 8px;
+
+      --ease: .2s ease;
+      --glass-blur: 16px;
+      --glass-saturate: 170%;
+      /* ------------------------------------------------------------------ */
+
+      color-scheme: light dark;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --bg: light-dark(#f7f7f8, #101014);
+      --fg: light-dark(#18181b, #fafafa);
+      --muted: light-dark(#52525b, #a1a1aa);
+      --muted-bg: light-dark(rgba(0, 0, 0, .06), rgba(255, 255, 255, .1));
+      --border: light-dark(rgba(0, 0, 0, .12), rgba(255, 255, 255, .14));
+      --accent: light-dark(rgba(0, 0, 0, .06), rgba(255, 255, 255, .08));
+      --glass-bg: linear-gradient(rgba(255, 255, 255, .72), rgba(255, 255, 255, .58));
+      --glass-border: light-dark(rgba(0, 0, 0, .1), rgba(255, 255, 255, .16));
+      --preview-bg: var(--bg);
+      --preview-bg-image: none;
+      --app-color: #6366f1;
+      --app-tint-image: linear-gradient(transparent, transparent);
+      --app-accent: var(--accent);
+      --glass-tinted-bg: var(--preview-bg-image), var(--app-tint-image), var(--glass-bg);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --glass-bg: linear-gradient(rgba(24, 24, 29, .78), rgba(24, 24, 29, .72));
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+    }
+
+    body {
+      overflow: hidden;
+      background: var(--preview-bg);
+      color: var(--fg);
+      font-size: 14px;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .icon {
+      display: inline-flex;
+      width: 1rem;
+      height: 1rem;
+      flex: none;
+      color: inherit;
+    }
+
+    .glass {
+      border: 1px solid var(--glass-border);
+      background-color: var(--preview-bg);
+      background-image: var(--glass-tinted-bg);
+      background-position: center;
+      background-size: cover, auto, auto;
+      background-blend-mode: soft-light, normal, normal;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, .18);
+      backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    }
+
+    body[data-preview-tone="dark"] {
+      --fg: #fafafa;
+      --muted: #a1a1aa;
+      --muted-bg: rgba(255, 255, 255, .1);
+      --border: rgba(255, 255, 255, .14);
+      --accent: rgba(255, 255, 255, .08);
+      --glass-bg: linear-gradient(rgba(255, 255, 255, .07), rgba(255, 255, 255, .02));
+      --glass-tinted-bg: var(--preview-bg-image), var(--app-tint-image), var(--glass-bg);
+      --glass-border: rgba(255, 255, 255, .09);
+    }
+
+    body[data-preview-tone="light"] {
+      --fg: #18181b;
+      --muted: #52525b;
+      --muted-bg: rgba(0, 0, 0, .06);
+      --border: rgba(0, 0, 0, .12);
+      --accent: rgba(0, 0, 0, .06);
+      --glass-bg: linear-gradient(rgba(255, 255, 255, .42), rgba(255, 255, 255, .2));
+      --glass-tinted-bg: var(--preview-bg-image), var(--app-tint-image), var(--glass-bg);
+      --glass-border: rgba(0, 0, 0, .07);
+    }
+
+    .truncate {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #app {
+      display: flex;
+      width: 100%;
+      height: 100%;
+    }
+
+    #sidebar {
+      position: relative;
+      z-index: 20;
+      display: flex;
+      width: var(--sidebar-w);
+      height: 100%;
+      flex: none;
+      flex-direction: column;
+      overflow: hidden;
+      border-width: 0 1px 0 0;
+      transition: width var(--ease), transform var(--ease);
+    }
+
+    #sidebar[data-width="wide2"] {
+      width: var(--sidebar-w2);
+    }
+    #sidebar[data-width="collapsed"] {
+      width: 0;
+      border: 0;
+    }
+    #sidebar[data-width="collapsed"] > * {
+      display: none;
+    }
+
+    #sidebar-header {
+      position: relative;
+      z-index: 3;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: var(--pane-pad);
+    }
+
+    #root-switcher {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .menu-btn {
+      display: flex;
+      min-width: 0;
+      flex: 1;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .menu-btn:hover,
+    .menu-btn.is-active {
+      background: var(--app-accent);
+    }
+    .menu-btn .grow {
+      min-width: 0;
+      flex: 1;
+    }
+
+    /* An appspace with no `color:` gets no badge at all — the icon draws in
+       the sidebar's own ink (or its own colours, if it is a multicolour one)
+       on nothing. Only a declared colour turns it into a tinted tile, and only
+       then does the glyph knock out against it. */
+    #root-icon {
+      display: inline-flex;
+      width: 32px;
+      height: 32px;
+      flex: none;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      color: var(--fg);
+    }
+    #root-icon .icon {
+      width: 20px;
+      height: 20px;
+    }
+    #root-icon[data-tinted="true"] {
+      background: var(--root-tint);
+      color: var(--bg);
+    }
+
+    #root-copy {
+      display: block;
+    }
+    #root-name {
+      display: block;
+      font-weight: 650;
+      font-size: 13px;
+    }
+    #root-description {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .icon-button {
+      display: inline-flex;
+      width: 28px;
+      height: 28px;
+      flex: none;
+      align-items: center;
+      justify-content: center;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .icon-button:hover {
+      background: var(--accent);
+      color: var(--fg);
+    }
+
+    #root-menu {
+      position: absolute;
+      z-index: 10;
+      top: calc(100% + 4px);
+      right: 0;
+      left: 0;
+      display: grid;
+      gap: 2px;
+      padding: 4px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--bg);
+      box-shadow: 0 14px 38px rgba(0, 0, 0, .25);
+    }
+
+    #root-menu[hidden] {
+      display: none;
+    }
+
+    #search-box {
+      display: flex;
+      height: 34px;
+      align-items: center;
+      gap: 8px;
+      padding: 0 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+    }
+
+    #search-box:focus-within {
+      border-color: var(--app-color, var(--fg));
+    }
+    #search {
+      width: 100%;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--fg);
+    }
+    #search::placeholder {
+      color: var(--muted);
+    }
+
+    #sidebar-tabs {
+      display: flex;
+      gap: 4px;
+    }
+    .tab {
+      display: flex;
+      flex: 1;
+      justify-content: center;
+      padding: 7px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .tab:hover,
+    .tab.active {
+      background: var(--app-accent);
+      color: var(--fg);
+    }
+
+    #sidebar-tree {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      gap: var(--row-gap);
+      overflow-y: auto;
+      /* Bottom padding clears the floating #sidebar-toggle, whatever size it is. */
+      padding: var(--pane-pad) var(--pane-pad)
+        calc(var(--toggle-size) + var(--toggle-inset) * 2);
+    }
+
+    .tree-group,
+    .app-group {
+      display: flex;
+      flex-direction: column;
+    }
+    .tree-children,
+    .app-children {
+      display: flex;
+      flex-direction: column;
+      gap: var(--row-gap-tight);
+      margin: var(--row-gap) 0 var(--row-gap) var(--tree-indent);
+      padding-left: var(--tree-rail-gap);
+      border-left: 1px solid var(--border);
+    }
+    /* Children hang off their app rather than off a section heading, so they
+       sit tighter to it than a section's own contents do. */
+    .app-children {
+      margin-block: var(--row-gap-tight);
+    }
+    .tree-children[hidden] {
+      display: none;
+    }
+
+    /* Tree density, cycled by `d`. "roomy" is the tuning block's own value,
+       so only the tighter two need saying. Each step trims the horizontal
+       padding too: the point of a tight tree is room for the label. */
+    #sidebar[data-indent="tight"] {
+      --tree-indent: 10px;
+      --tree-rail-gap: 6px;
+      --row-pad-x: 6px;
+    }
+    #sidebar[data-indent="flat"] {
+      --tree-indent: 0px;
+      --tree-rail-gap: 6px;
+      --row-pad-x: 4px;
+    }
+
+    .tree-row,
+    .app-row,
+    .child-row {
+      display: flex;
+      width: 100%;
+      align-items: center;
+      gap: 8px;
+      padding: var(--row-pad-y) var(--row-pad-x);
+      border: 0;
+      border-radius: var(--row-radius);
+      background: transparent;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .tree-row:hover,
+    .app-row:hover,
+    .app-row.is-active,
+    .child-row:hover,
+    .child-row.is-active {
+      background: var(--app-accent);
+    }
+
+    .tree-row__chevron {
+      color: var(--muted);
+      transition: transform var(--ease);
+    }
+    .tree-row[aria-expanded="true"] .tree-row__chevron {
+      transform: rotate(90deg);
+    }
+    .tree-row__icon,
+    .app-row__icon,
+    .child-row__icon {
+      color: var(--item-color, var(--muted));
+    }
+    .tree-row__label,
+    .app-row__label,
+    .child-row__label {
+      min-width: 0;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .tree-row__label {
+      font-weight: 550;
+    }
+    .tree-row__count {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .app-row {
+      color: var(--muted);
+      /* The row is a plain div; only .app-row__select is clickable. Drop the
+         shared row padding here and re-apply it inside the button, so the
+         button covers the full row instead of leaving a dead, pointer-cursored
+         margin around the label. Right padding stays for the external link. */
+      padding: 0 var(--row-pad-x) 0 0;
+    }
+    .app-row:hover,
+    .app-row.is-active {
+      color: var(--fg);
+    }
+    .app-row__select {
+      display: flex;
+      min-width: 0;
+      flex: 1;
+      align-items: center;
+      gap: 8px;
+      /* stretch = full row height; padding matches the old .app-row padding so
+         the row's size is unchanged, but now it's all inside the hit target. */
+      align-self: stretch;
+      padding: var(--row-pad-y) 0 var(--row-pad-y) var(--row-pad-x);
+      border: 0;
+      background: transparent;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+    .app-row__external {
+      opacity: 0;
+    }
+    .app-row:hover .app-row__external,
+    .app-row:focus-within .app-row__external,
+    .app-row.is-active .app-row__external {
+      opacity: 1;
+    }
+
+    /* Hotkey help. A native <dialog> so Escape, the backdrop and focus
+       trapping come for free — the rows are built from HOTKEYS in the script,
+       which is the one place a shortcut is declared. */
+    #help-dialog {
+      width: min(360px, calc(100vw - 32px));
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--bg);
+      color: var(--fg);
+      box-shadow: 0 20px 60px light-dark(rgba(0, 0, 0, .18), rgba(0, 0, 0, .45));
+      font-size: 13px;
+    }
+    #help-dialog::backdrop {
+      background: rgba(0, 0, 0, .34);
+      backdrop-filter: blur(2px);
+    }
+    #help-dialog h2 {
+      margin: 0 0 12px;
+      font-size: 13px;
+      font-weight: 650;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .help-row {
+      display: grid;
+      grid-template-columns: 4.5rem minmax(0, 1fr);
+      align-items: baseline;
+      gap: 10px;
+      padding: 5px 0;
+    }
+    .help-row kbd {
+      padding: 2px 7px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: var(--muted-bg);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      justify-self: start;
+    }
+
+    /* Instant metadata card for the external-open control. It lives outside
+       #sidebar so the panel's overflow never clips it — which also puts it
+       outside the [data-preview-tone] scope, so it re-declares the surface
+       tokens here and follows the OS scheme instead of the previewed app. */
+    #app-tooltip {
+      --fg: light-dark(#18181b, #fafafa);
+      --muted: light-dark(#52525b, #a1a1aa);
+      --muted-bg: light-dark(rgba(0, 0, 0, .06), rgba(255, 255, 255, .09));
+      --border: light-dark(rgba(0, 0, 0, .1), rgba(255, 255, 255, .12));
+      --surface: light-dark(rgba(255, 255, 255, .97), rgba(24, 24, 27, .97));
+
+      position: fixed;
+      z-index: 100;
+      width: min(320px, calc(100vw - 16px));
+      padding: 13px;
+      border: 1px solid color-mix(in srgb, var(--item-color) 55%, transparent);
+      border-radius: 11px;
+      background: var(--surface);
+      color: var(--fg);
+      box-shadow: 0 18px 50px light-dark(rgba(0, 0, 0, .16), rgba(0, 0, 0, .34)),
+        0 2px 8px light-dark(rgba(0, 0, 0, .1), rgba(0, 0, 0, .25));
+      font-size: 12px;
+      line-height: 1.4;
+      user-select: text;
+      backdrop-filter: blur(16px) saturate(140%);
+      -webkit-backdrop-filter: blur(16px) saturate(140%);
+    }
+    #app-tooltip[hidden] {
+      display: none;
+    }
+    .app-tooltip__header {
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr);
+      align-items: center;
+      gap: 9px;
+    }
+    .app-tooltip__icon {
+      display: flex;
+      width: 30px;
+      height: 30px;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid color-mix(in srgb, var(--item-color) 38%, transparent);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--item-color) 18%, transparent);
+      color: var(--item-color);
+    }
+    .app-tooltip__name {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      font-size: 13px;
+      line-height: 1.25;
+    }
+    .app-tooltip__description {
+      margin-top: 9px;
+      color: var(--muted);
+    }
+    .app-tooltip__tags,
+    .app-tooltip__path,
+    .app-tooltip__actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 9px;
+    }
+    .app-tooltip__tags span,
+    .app-tooltip__path span {
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: var(--muted-bg);
+      font-size: 10px;
+    }
+    .app-tooltip__path {
+      align-items: center;
+      padding-top: 9px;
+      border-top: 1px solid var(--border);
+    }
+    .app-tooltip__path b {
+      color: var(--muted);
+      font-weight: 400;
+    }
+    .app-tooltip__store {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: baseline;
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+    .app-tooltip__store code {
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: var(--muted-bg);
+      color: var(--fg);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 10px;
+    }
+    .app-tooltip__updated {
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+    .app-tooltip__updated time {
+      color: var(--fg);
+      font-variant-numeric: tabular-nums;
+    }
+    .app-tooltip__action {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 8px;
+      border: 1px solid color-mix(in srgb, var(--item-color) 32%, transparent);
+      border-radius: 7px;
+      background: color-mix(in srgb, var(--item-color) 14%, transparent);
+      color: color-mix(in srgb, var(--item-color) 88%, var(--fg));
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1;
+    }
+    .app-tooltip__action:hover,
+    .app-tooltip__action:focus-visible {
+      background: color-mix(in srgb, var(--item-color) 24%, transparent);
+    }
+    .app-tooltip__action--folder {
+      border-color: var(--border);
+      background: var(--muted-bg);
+      color: var(--fg);
+    }
+
+    /* An app's `children:` sub-pages. .app-group only exists when there are
+       any, so an app without children keeps the flat markup it always had. */
+    .child-row {
+      min-width: 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .child-row:hover,
+    .child-row.is-active {
+      color: var(--fg);
+    }
+
+    #sidebar-empty {
+      padding: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    #stage {
+      position: relative;
+      min-width: 0;
+      flex: 1;
+      background: var(--preview-bg);
+    }
+    #preview-frame {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: transparent;
+    }
+    #preview-frame[hidden] {
+      display: none;
+    }
+    #preview-empty {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: var(--muted);
+      pointer-events: none;
+    }
+    #preview-appspace {
+      margin: 0;
+      color: var(--fg);
+      font-size: clamp(2rem, 6vw, 4.5rem);
+      letter-spacing: -.04em;
+    }
+    #preview-message {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      font-size: 1rem;
+    }
+    #preview-message .icon {
+      width: 22px;
+      height: 22px;
+    }
+    #preview-empty[hidden] {
+      display: none;
+    }
+
+    #sidebar-toggle {
+      position: fixed;
+      z-index: 40;
+      bottom: var(--toggle-inset);
+      left: var(--toggle-inset);
+      display: flex;
+      width: var(--toggle-size);
+      height: var(--toggle-size);
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      color: var(--fg);
+      cursor: pointer;
+    }
+    #sidebar-toggle svg {
+      width: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+    }
+    #sidebar-backdrop {
+      display: none;
+    }
+
+    @media (max-width: 900px) {
+      #sidebar {
+        position: fixed;
+        inset: 0 auto 0 0;
+        width: var(--sidebar-w);
+      }
+      #sidebar[data-width="wide2"] {
+        width: min(var(--sidebar-w2), calc(100vw - 2rem));
+      }
+      #sidebar[data-width="collapsed"] {
+        width: var(--sidebar-w);
+        transform: translateX(-110%);
+      }
+      #sidebar[data-width="collapsed"] > * {
+        display: flex;
+      }
+      #sidebar[data-width="collapsed"] #sidebar-tree {
+        display: flex;
+      }
+      #sidebar-backdrop {
+        position: fixed;
+        z-index: 15;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+        background: rgba(0, 0, 0, .35);
+        backdrop-filter: blur(2px);
+      }
+      #sidebar-backdrop:not([hidden]) {
+        display: block;
+      }
+    }
+    </style>
+  </head>
+  <body id="page-body">
+    <!-- The icon sprite is fetched once and injected here. -->
+    <div id="icon-sprite" hidden aria-hidden="true"></div>
+
+    <div id="app">
+      <aside id="sidebar" class="glass" data-width="wide" data-indent="roomy">
+        <header id="sidebar-header">
+          <div id="root-switcher">
+            <button id="root-cycle" class="menu-btn" type="button"
+              aria-label="Next appspace">
+              <span id="root-icon"></span>
+              <span id="root-copy" class="grow">
+                <span id="root-name" class="truncate">Loading…</span>
+                <span id="root-description" class="truncate"></span>
+              </span>
+            </button>
+            <button id="root-menu-toggle" class="icon-button" type="button"
+              aria-haspopup="listbox" aria-expanded="false"
+              aria-controls="root-menu" title="Choose an appspace">
+              <svg class="icon" aria-hidden="true">
+                <use href="#mdi--unfold-more-horizontal"></use>
+              </svg>
+            </button>
+            <div id="root-menu" role="listbox" aria-label="Appspaces"
+              hidden></div>
+          </div>
+
+          <label id="search-box" for="search">
+            <svg class="icon" aria-hidden="true">
+              <use href="#mdi--magnify"></use>
+            </svg>
+            <input id="search" type="search"
+              placeholder="Search apps, tags, paths…" autocomplete="off"
+              spellcheck="false">
+          </label>
+
+          <nav id="sidebar-tabs" aria-label="Sidebar views">
+            <button id="tree-view" class="tab active" data-view="tree"
+              type="button" title="App tree">
+              <svg class="icon" aria-hidden="true">
+                <use href="#solar--folder-bold-duotone"></use>
+              </svg>
+            </button>
+            <button id="recent-view" class="tab" data-view="recent"
+              type="button" title="Recently opened">
+              <svg class="icon" aria-hidden="true">
+                <use href="#solar--history-bold-duotone"></use>
+              </svg>
+            </button>
+            <button id="updated-view" class="tab" data-view="updated"
+              type="button" title="Recently updated">
+              <svg class="icon" aria-hidden="true">
+                <use href="#solar--calendar-bold-duotone"></use>
+              </svg>
+            </button>
+            <button id="expand-toggle" class="tab" type="button"
+              title="Expand or collapse all (x)">
+              <svg class="icon" aria-hidden="true">
+                <use href="#lucide--chevrons-down-up"></use>
+              </svg>
+            </button>
+          </nav>
+        </header>
+
+        <nav id="sidebar-tree" aria-label="Apps"></nav>
+      </aside>
+
+      <main id="stage">
+        <iframe id="preview-frame" title="App preview"
+          src="about:blank" hidden></iframe>
+        <div id="preview-empty">
+          <h1 id="preview-appspace">s5</h1>
+          <p id="preview-message">
+            <svg class="icon" aria-hidden="true">
+              <use href="#mdi--arrow-left"></use>
+            </svg>
+            <span id="preview-instruction">Select an app on the left.</span>
+          </p>
+        </div>
+      </main>
+    </div>
+
+    <button id="sidebar-backdrop" type="button" aria-label="Close sidebar"
+      tabindex="-1" hidden></button>
+    <div id="app-tooltip" role="tooltip" hidden></div>
+    <dialog id="help-dialog" aria-label="Keyboard shortcuts"></dialog>
+    <button id="sidebar-toggle" class="glass" type="button"
+      aria-label="Cycle sidebar size" title="Sidebar size (s)">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+        <path d="M9 4v16"></path>
+      </svg>
+    </button>
+
+    <script type="module">
+    /**
+     * The app browser.
+     *
+     * Plain ES modules, no build step and no dependencies. App metadata arrives
+     * already parsed from `GET /api/apps`, so nothing here knows about YAML.
+     */
+
+    /* ---- Tuning -------------------------------------------------------
+       The knobs, and the values that have to agree with something outside
+       this script. Nothing here is state; it is all read as written. */
+
+    /** Everything the frontend remembers, under one localStorage key. */
+    const STORAGE_KEY = "sites5.frontend";
+    /** The discovery document: appspaces, sections, and every app. */
+    const API_URL = "/api/apps";
+    /** Fetched and inlined at boot, because <use> will not follow a URL. */
+    const SPRITE_URL = "/shared/icons.svg";
+    const SVG_NS = "http://www.w3.org/2000/svg";
+
+    /** Sidebar widths, in the order #sidebar-toggle cycles them. */
+    const SIZES = ["wide", "wide2", "collapsed"];
+    /** Tree indent steps, in the order `d` cycles them. See #sidebar[data-indent]. */
+    const INDENTS = ["roomy", "tight", "flat"];
+    /** How long writes to `state` are batched before they are stored. */
+    const SAVE_DELAY = 250;
+    /** Must stay in step with the @media breakpoint in the stylesheet. */
+    const MOBILE_QUERY = "(max-width: 900px)";
+    /** How many apps "Recently opened" keeps. */
+    const RECENT_LIMIT = 30;
+    const TOOLTIP_HIDE_DELAY = 150;
+
+    /* Fallbacks for when _app.yaml or sections-metadata.yaml leaves a field
+       out. Any name here must exist in the sprite — run `deno task icons`
+       after changing one, or it renders as blank space. */
+    const DEFAULT_APPSPACE_ICON = "solar:widget-bold-duotone";
+    const DEFAULT_SECTION_ICON = "solar:folder-bold-duotone";
+    const DEFAULT_APP_ICON = "mdi:application-outline";
+    const DEFAULT_APP_COLOR = "#8b5cf6";
+    const DEFAULT_CHILD_ICON = "mdi:file-outline";
+    const CHEVRON_ICON = "mdi:chevron-right";
+    const EXTERNAL_ICON = "mdi:open-in-new";
+
+    /* How hard an app's accent tints the shell, in percent. TINT_TOP and
+       TINT_BOTTOM are the ends of the glass gradient; ACCENT_MIX is the
+       hover and selected-row wash. Raise all three for a bolder shell. */
+    const TINT_TOP = 18;
+    const TINT_BOTTOM = 7;
+    const ACCENT_MIX = 20;
+    /** Perceived luminance above which a preview counts as light. */
+    const LIGHT_TONE_THRESHOLD = 0.55;
+    /** An app posts this to say it repainted its own background. */
+    const PREVIEW_BG_MESSAGE = "gallery-preview-bg-changed";
+    /* ------------------------------------------------------------------ */
+
+    const refs = {
+      sprite: document.querySelector("#icon-sprite"),
+      sidebar: document.querySelector("#sidebar"),
+      rootCycle: document.querySelector("#root-cycle"),
+      rootIcon: document.querySelector("#root-icon"),
+      rootName: document.querySelector("#root-name"),
+      rootDescription: document.querySelector("#root-description"),
+      rootMenuToggle: document.querySelector("#root-menu-toggle"),
+      rootMenu: document.querySelector("#root-menu"),
+      search: document.querySelector("#search"),
+      viewButtons: [...document.querySelectorAll("[data-view]")],
+      expandToggle: document.querySelector("#expand-toggle"),
+      tree: document.querySelector("#sidebar-tree"),
+      tooltip: document.querySelector("#app-tooltip"),
+      help: document.querySelector("#help-dialog"),
+      previewFrame: document.querySelector("#preview-frame"),
+      previewEmpty: document.querySelector("#preview-empty"),
+      previewAppspace: document.querySelector("#preview-appspace"),
+      toggle: document.querySelector("#sidebar-toggle"),
+      backdrop: document.querySelector("#sidebar-backdrop"),
+    };
+
+    const defaultState = {
+      selectedAppspace: null,
+      view: "tree",
+      width: "wide",
+      indent: "roomy",
+      search: "",
+      collapsed: [],
+      recent: [],
+      activeApp: null,
+      /** Which of the active app's `children:` pages is open, if any. */
+      activeChild: null,
+    };
+
+    let manifest = null;
+    let apps = [];
+    let state = loadState();
+    let tooltipAnchor = null;
+    let tooltipHideTimer = null;
+
+    function loadState() {
+      try {
+        return { ...defaultState, ...JSON.parse(localStorage.getItem(STORAGE_KEY)) };
+      } catch {
+        return { ...defaultState };
+      }
+    }
+
+    /**
+     * Writes are batched.
+     *
+     * `state.search` alone calls this on every keystroke, which costs nothing
+     * against localStorage and will cost a round trip against a database. Call
+     * it as often as you like; `flushState` runs on the way out so nothing
+     * pending is lost.
+     */
+    let saveTimer = null;
+
+    function writeState() {
+      saveTimer = null;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch { /* State remains available for this page load. */ }
+    }
+
+    function saveState() {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(writeState, SAVE_DELAY);
+    }
+
+    function flushState() {
+      if (saveTimer !== null) writeState();
+    }
+
+    /** `lucide:house` is stored in the sprite as `lucide--house`. */
+    function spriteId(name) {
+      return name.replace(":", "--").replace(/[^a-z0-9-]+/gi, "-");
+    }
+
+    /**
+     * A cloned icon brings the sprite's own gradient ids with it, and the
+     * duplicate makes `url(#…)` resolve to the copy still sitting inside the
+     * hidden sprite — which paints nothing. Renaming them per clone is what
+     * makes a multicolour icon appear at all. Most icons have no ids, so this
+     * costs one empty query.
+     */
+    function isolateIds(svg, serial) {
+      const renamed = new Map();
+      for (const node of svg.querySelectorAll("[id]")) {
+        const from = node.id;
+        const to = `${from}-${serial}`;
+        renamed.set(from, to);
+        node.id = to;
+      }
+      if (!renamed.size) return;
+      for (const node of svg.querySelectorAll("*")) {
+        for (const attribute of node.attributes) {
+          for (const [from, to] of renamed) {
+            if (attribute.value.includes(`#${from}`)) {
+              attribute.value = attribute.value.replaceAll(`#${from}`, `#${to}`);
+            }
+          }
+        }
+      }
+    }
+
+    let iconSerial = 0;
+
+    /**
+     * One icon, cloned out of the sprite.
+     *
+     * `<use href="#id">` would be the obvious way and was, until a multicolour
+     * icon arrived: a path painted `fill="url(#gradient)"` renders nothing
+     * inside a <use> shadow tree in Chrome, so most of a gradient logo silently
+     * disappears. Cloning the symbol's children paints them normally, and
+     * carrying the symbol's own viewBox across keeps a non-square icon from
+     * being cropped to fit the square box it is drawn in.
+     */
+    function icon(name, className = "") {
+      const svg = document.createElementNS(SVG_NS, "svg");
+      svg.setAttribute("class", `icon ${className}`.trim());
+      svg.setAttribute("aria-hidden", "true");
+      const symbol = refs.sprite.querySelector(`#${CSS.escape(spriteId(name))}`);
+      if (symbol) {
+        svg.setAttribute("viewBox", symbol.getAttribute("viewBox"));
+        svg.append(...[...symbol.children].map((child) => child.cloneNode(true)));
+        isolateIds(svg, ++iconSerial);
+      }
+      return svg;
+    }
+
+    /**
+     * Inline the sprite so `<use href="#id">` resolves. Browsers do not follow
+     * `<use>` into an external file, so fetching and injecting is the portable way
+     * to keep the icons in one cacheable document.
+     */
+    async function loadSprite() {
+      try {
+        const response = await fetch(SPRITE_URL);
+        if (response.ok) refs.sprite.innerHTML = await response.text();
+      } catch { /* Icons degrade to blank space; the labels still read fine. */ }
+    }
+
+    function pathKey(appspace, sections) {
+      return [appspace, ...sections].join("/");
+    }
+
+    function currentAppspace() {
+      return manifest?.appspaces.find((item) => item.name === state.selectedAppspace) ??
+        manifest?.appspaces[0];
+    }
+
+    function rootApps() {
+      return apps.filter((app) => app.appspace === currentAppspace()?.name);
+    }
+
+    function matchesSearch(app) {
+      const needle = state.search.trim().toLowerCase();
+      if (!needle) return true;
+      return [app.name, app.description, app.path, ...app.tags, ...(app.children ?? [])]
+        .join(" ").toLowerCase().includes(needle);
+    }
+
+    function setRootMenu(open) {
+      refs.rootMenu.hidden = !open;
+      refs.rootMenuToggle.setAttribute("aria-expanded", String(open));
+    }
+
+    function renderRoot() {
+      const root = currentAppspace();
+      if (!root) return;
+      refs.rootName.textContent = root.name;
+      const count = rootApps().length;
+      refs.rootDescription.textContent = `${count} app${count === 1 ? "" : "s"}`;
+
+      // Header icon: redraw the glyph, and tint the badge behind it only when
+      // the appspace actually declares a colour.
+      refs.rootIcon.replaceChildren(icon(root.icon || DEFAULT_APPSPACE_ICON));
+      refs.rootIcon.dataset.tinted = String(Boolean(root.color));
+      refs.rootIcon.style.setProperty("--root-tint", root.color || "");
+
+      refs.rootMenu.replaceChildren();
+      for (const appspace of manifest.appspaces) {
+        const button = document.createElement("button");
+        button.id = `appspace-${appspace.name}-option`;
+        button.className = `menu-btn${appspace.name === root.name ? " is-active" : ""}`;
+        button.type = "button";
+        button.setAttribute("role", "option");
+        button.setAttribute("aria-selected", String(appspace.name === root.name));
+        const glyph = icon(appspace.icon || DEFAULT_APPSPACE_ICON);
+        if (appspace.color) glyph.style.color = appspace.color;
+        button.append(glyph);
+        const label = document.createElement("span");
+        label.className = "truncate";
+        label.textContent = appspace.name;
+        button.append(label);
+        button.addEventListener("click", () => selectAppspace(appspace.name));
+        refs.rootMenu.append(button);
+      }
+    }
+
+    function selectAppspace(name) {
+      state = { ...state, selectedAppspace: name, activeApp: null, activeChild: null };
+      setRootMenu(false);
+      showAppspaceLanding();
+      saveState();
+      renderRoot();
+      renderTree();
+    }
+
+    /** The entry after `current`, wrapping — and the first one if `current`
+        is not in the list, which is what a stale stored value looks like. */
+    function nextIn(list, current) {
+      return list[(list.indexOf(current) + 1) % list.length];
+    }
+
+    function cycleAppspace() {
+      selectAppspace(nextIn(manifest.appspaces.map((item) => item.name), currentAppspace()?.name));
+    }
+
+    function countApps(section, appspace, parents, byPath) {
+      const path = [...parents, section.name];
+      return (byPath.get(pathKey(appspace, path)) ?? []).length +
+        section.sections.reduce(
+          (total, child) => total + countApps(child, appspace, path, byPath),
+          0,
+        );
+    }
+
+    function descendantSectionIds(section, appspace, parents) {
+      const path = [...parents, section.name];
+      return section.sections.flatMap((child) => [
+        pathKey(appspace, [...path, child.name]),
+        ...descendantSectionIds(child, appspace, path),
+      ]);
+    }
+
+    function cycleSection(section, appspace, parents) {
+      const sectionId = pathKey(appspace, [...parents, section.name]);
+      const descendants = descendantSectionIds(section, appspace, parents);
+      const collapsed = new Set(state.collapsed);
+
+      if (collapsed.has(sectionId)) {
+        collapsed.delete(sectionId);
+        for (const id of descendants) collapsed.add(id);
+      } else if (descendants.some((id) => collapsed.has(id))) {
+        for (const id of descendants) collapsed.delete(id);
+      } else {
+        collapsed.add(sectionId);
+        for (const id of descendants) collapsed.add(id);
+      }
+
+      state.collapsed = [...collapsed];
+      saveState();
+      syncCollapsed();
+    }
+
+    /** `editor.html` reads better as `editor` once it is under its app. */
+    function childLabel(file) {
+      return file.split("/").pop().replace(/\.[^.]+$/, "");
+    }
+
+    /**
+     * The `children:` rows for one app, or null when it declares none.
+     *
+     * Kept separate from renderApp so that an app without children produces
+     * exactly the markup it always did — one .app-row, no wrapper.
+     */
+    function renderAppChildren(app) {
+      if (!app.children?.length) return null;
+
+      const children = document.createElement("div");
+      children.id = `app-${app.id}-children`;
+      children.className = "app-children";
+
+      app.children.forEach((file, index) => {
+        const row = document.createElement("button");
+        row.id = `app-${app.id}-child-${index}`;
+        row.className = `child-row${
+          state.activeApp === app.id && state.activeChild === file ? " is-active" : ""
+        }`;
+        row.type = "button";
+        row.style.setProperty("--item-color", app.color || DEFAULT_APP_COLOR);
+        row.append(icon(DEFAULT_CHILD_ICON, "child-row__icon"));
+        const label = document.createElement("span");
+        label.className = "child-row__label";
+        label.textContent = childLabel(file);
+        row.append(label);
+        row.title = file;
+        row.addEventListener("click", () => openApp(app, true, file));
+        children.append(row);
+      });
+
+      return children;
+    }
+
+    function cancelTooltipHide() {
+      if (tooltipHideTimer === null) return;
+      clearTimeout(tooltipHideTimer);
+      tooltipHideTimer = null;
+    }
+
+    function hideTooltipNow() {
+      cancelTooltipHide();
+      refs.tooltip.hidden = true;
+      tooltipAnchor = null;
+    }
+
+    function scheduleTooltipHide() {
+      cancelTooltipHide();
+      tooltipHideTimer = setTimeout(hideTooltipNow, TOOLTIP_HIDE_DELAY);
+    }
+
+    function tooltipText(className, text, tagName = "div") {
+      const element = document.createElement(tagName);
+      if (className) element.className = className;
+      element.textContent = text;
+      return element;
+    }
+
+    function keyboardMaestroHref(macro, path) {
+      return `kmtrigger://macro=${macro}&value=${encodeURIComponent(path)}`;
+    }
+
+    function tooltipAction(label, macro, path, iconName, folder = false) {
+      const action = document.createElement("a");
+      action.className = `app-tooltip__action${folder ? " app-tooltip__action--folder" : ""}`;
+      action.href = keyboardMaestroHref(macro, path);
+      action.title = `${label}: ${path}`;
+      action.append(icon(iconName), document.createTextNode(label));
+      return action;
+    }
+
+    function appTooltipContent(app) {
+      const fragment = document.createDocumentFragment();
+      const header = document.createElement("div");
+      header.className = "app-tooltip__header";
+      const glyph = document.createElement("span");
+      glyph.className = "app-tooltip__icon";
+      glyph.append(icon(app.icon || DEFAULT_APP_ICON));
+      header.append(glyph, tooltipText("app-tooltip__name", app.name, "strong"));
+      fragment.append(header);
+
+      if (app.description) {
+        fragment.append(tooltipText("app-tooltip__description", app.description));
+      }
+      if (app.tags.length) {
+        const tags = document.createElement("div");
+        tags.className = "app-tooltip__tags";
+        for (const tag of app.tags) tags.append(tooltipText("", tag, "span"));
+        fragment.append(tags);
+      }
+
+      const path = document.createElement("div");
+      path.className = "app-tooltip__path";
+      [app.appspace, ...app.sections, app.name].forEach((part, index) => {
+        if (index) path.append(tooltipText("", "›", "b"));
+        path.append(tooltipText("", part, "span"));
+      });
+      fragment.append(path);
+
+      const updated = parseTimestamp(app.updated);
+      if (updated !== null) {
+        const line = tooltipText("app-tooltip__updated", "Updated ");
+        const time = document.createElement("time");
+        time.dateTime = app.updated;
+        time.textContent = new Date(updated).toLocaleDateString(undefined, {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        });
+        line.append(time);
+        fragment.append(line);
+      }
+
+      /* `store:` is the /api/data/ namespace. No `store:` is read as "this app
+         saves nothing" and the row is left out — the server would fall back to
+         the app's id, but that is a fallback for an app that forgot the field,
+         not a namespace worth advertising on one that never writes. */
+      if (app.store) {
+        const line = document.createElement("div");
+        line.className = "app-tooltip__store";
+        const key = document.createElement("code");
+        key.textContent = `${app.store}/`;
+        line.append(tooltipText("", "Storage", "span"), key);
+        fragment.append(line);
+      }
+
+      /* Checkout comes from GET /api/apps so a rename or a different clone
+         does not need a frontend edit. Macros are `{folder}-file` and
+         `{folder}-folder`. Absent on Val Town, where there is no disk path. */
+      const checkout = manifest?.checkout;
+      if (checkout?.root && checkout.name) {
+        const folderPath = `${checkout.root}/Apps/${app.path}`;
+        const filePath = `${folderPath}/_app.yaml`;
+        const actions = document.createElement("div");
+        actions.className = "app-tooltip__actions";
+        actions.append(
+          tooltipAction("Open _app.yaml", `${checkout.name}-file`, filePath, DEFAULT_CHILD_ICON),
+          tooltipAction(
+            "Open folder",
+            `${checkout.name}-folder`,
+            folderPath,
+            DEFAULT_SECTION_ICON,
+            true,
+          ),
+        );
+        fragment.append(actions);
+      }
+      return fragment;
+    }
+
+    function positionTooltip(anchor) {
+      if (refs.tooltip.hidden) return;
+      const anchorRect = anchor.getBoundingClientRect();
+      const tooltipRect = refs.tooltip.getBoundingClientRect();
+      const gap = 4;
+      const edge = 8;
+      let left = anchorRect.right + gap;
+      if (left + tooltipRect.width > innerWidth - edge) {
+        left = anchorRect.left - tooltipRect.width - gap;
+      }
+      left = Math.max(edge, Math.min(left, innerWidth - tooltipRect.width - edge));
+      const centeredTop = anchorRect.top + (anchorRect.height - tooltipRect.height) / 2;
+      const top = Math.max(edge, Math.min(centeredTop, innerHeight - tooltipRect.height - edge));
+      refs.tooltip.style.left = `${Math.round(left)}px`;
+      refs.tooltip.style.top = `${Math.round(top)}px`;
+      refs.tooltip.style.visibility = "visible";
+    }
+
+    function showTooltip(anchor) {
+      const app = apps.find((candidate) => candidate.id === anchor.dataset.appId);
+      if (!app) return;
+      cancelTooltipHide();
+      refs.tooltip.style.setProperty("--item-color", app.color || DEFAULT_APP_COLOR);
+      refs.tooltip.replaceChildren(appTooltipContent(app));
+      /* Unhide before measuring, but stay invisible until positionTooltip has
+         a real box to work from — otherwise it paints at the previous spot. */
+      refs.tooltip.hidden = false;
+      refs.tooltip.style.visibility = "hidden";
+      tooltipAnchor = anchor;
+      positionTooltip(anchor);
+    }
+
+    function renderApp(app) {
+      const row = document.createElement("div");
+      row.id = `app-${app.id}`;
+      row.className = `app-row${state.activeApp === app.id ? " is-active" : ""}`;
+      row.style.setProperty("--item-color", app.color || DEFAULT_APP_COLOR);
+
+      const select = document.createElement("button");
+      select.id = `app-${app.id}-select`;
+      select.className = "app-row__select";
+      select.type = "button";
+      select.append(icon(app.icon || DEFAULT_APP_ICON, "app-row__icon"));
+      const label = document.createElement("span");
+      label.className = "app-row__label";
+      label.textContent = app.name;
+      select.append(label);
+      select.addEventListener("click", () => openApp(app));
+
+      const external = document.createElement("a");
+      external.id = `app-${app.id}-external`;
+      external.className = "app-row__external icon-button";
+      external.href = app.url;
+      external.target = "_blank";
+      external.rel = "noopener";
+      external.title = `Open ${app.name} in a new tab`;
+      external.setAttribute("aria-label", external.title);
+      external.setAttribute("aria-describedby", "app-tooltip");
+      external.dataset.appId = app.id;
+      external.append(icon(EXTERNAL_ICON));
+
+      row.append(select, external);
+
+      const children = renderAppChildren(app);
+      if (!children) return row;
+
+      const group = document.createElement("div");
+      group.id = `app-${app.id}-group`;
+      group.className = "app-group";
+      group.append(row, children);
+      return group;
+    }
+
+    function renderSection(section, appspace, parents, byPath) {
+      const path = [...parents, section.name];
+      const sectionId = pathKey(appspace, path);
+      const group = document.createElement("div");
+      group.id = `section-${sectionId.replace(/[^a-z0-9]+/gi, "-")}`;
+      group.className = "tree-group";
+      group.dataset.sectionId = sectionId;
+      // Only the app tree force-expands during a search; the updated tree does not.
+      group.dataset.searchAware = "true";
+
+      const button = document.createElement("button");
+      button.className = "tree-row";
+      button.type = "button";
+      const collapsed = state.collapsed.includes(sectionId) && !state.search;
+      button.setAttribute("aria-expanded", String(!collapsed));
+      button.append(icon(CHEVRON_ICON, "tree-row__chevron"));
+      button.append(icon(section.icon || DEFAULT_SECTION_ICON, "tree-row__icon"));
+      button.style.setProperty("--item-color", section.color || "var(--muted)");
+      const label = document.createElement("span");
+      label.className = "tree-row__label";
+      label.textContent = section.name;
+      const count = document.createElement("span");
+      count.className = "tree-row__count";
+      count.textContent = countApps(section, appspace, parents, byPath);
+      button.append(label, count);
+
+      const children = document.createElement("div");
+      children.className = "tree-children";
+      children.hidden = collapsed;
+      for (const app of byPath.get(pathKey(appspace, path)) ?? []) {
+        if (matchesSearch(app)) children.append(renderApp(app));
+      }
+      for (const child of section.sections) {
+        const rendered = renderSection(child, appspace, path, byPath);
+        if (rendered.dataset.hasMatches === "true") children.append(rendered);
+      }
+      group.dataset.hasMatches = String(children.childElementCount > 0);
+      button.addEventListener("click", () => cycleSection(section, appspace, parents));
+      group.append(button, children);
+      return group;
+    }
+
+    function renderRecent() {
+      const byId = new Map(rootApps().map((app) => [app.id, app]));
+      const recent = state.recent.map((id) => byId.get(id)).filter(Boolean)
+        .filter(matchesSearch);
+      if (!recent.length) return renderEmpty("No recently opened apps.");
+      for (const app of recent) refs.tree.append(renderApp(app));
+    }
+
+    function parseTimestamp(value) {
+      if (!value) return null;
+      const normalized = /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T12:00:00` : value;
+      const timestamp = Date.parse(normalized);
+      return Number.isNaN(timestamp) ? null : timestamp;
+    }
+
+    function dateKey(timestamp) {
+      const date = new Date(timestamp);
+      return [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, "0"),
+        String(date.getDate()).padStart(2, "0"),
+      ].join("-");
+    }
+
+    function dayStart(timestamp) {
+      const date = new Date(timestamp);
+      date.setHours(0, 0, 0, 0);
+      return date.getTime();
+    }
+
+    function dayLabel(timestamp) {
+      const days = Math.floor((dayStart(Date.now()) - dayStart(timestamp)) / 86_400_000);
+      if (days === 0) return "Today";
+      if (days === 1) return "Yesterday";
+      return new Date(timestamp).toLocaleDateString(undefined, {
+        weekday: "long",
+        month: "short",
+        day: "numeric",
+      });
+    }
+
+    function weekDetails(timestamp) {
+      const date = new Date(timestamp);
+      const start = new Date(date);
+      const weekday = start.getDay();
+      start.setDate(start.getDate() + (weekday === 0 ? -6 : 1 - weekday));
+      start.setHours(0, 0, 0, 0);
+      const thursday = new Date(start);
+      thursday.setDate(thursday.getDate() + 3);
+      const year = thursday.getFullYear();
+      const yearStart = new Date(year, 0, 1);
+      const week = Math.ceil((((thursday - yearStart) / 86_400_000) + 1) / 7);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 6);
+      const range = `${start.toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${
+        end.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+      }`;
+      return { year, week, start: start.getTime(), label: `Week ${week} · ${range}` };
+    }
+
+    function buildUpdatedTree(appList) {
+      const years = new Map();
+      const undated = [];
+      for (const app of appList) {
+        const timestamp = parseTimestamp(app.updated);
+        if (timestamp === null) {
+          undated.push(app);
+          continue;
+        }
+        const details = weekDetails(timestamp);
+        const year = String(details.year);
+        const week = `${year}-W${details.week}`;
+        if (!years.has(year)) years.set(year, new Map());
+        const weeks = years.get(year);
+        if (!weeks.has(week)) weeks.set(week, { ...details, days: new Map() });
+        const days = weeks.get(week).days;
+        const key = dateKey(timestamp);
+        if (!days.has(key)) days.set(key, { timestamp, apps: [] });
+        days.get(key).apps.push(app);
+      }
+
+      const nodes = [...years.entries()].sort((a, b) => Number(b[0]) - Number(a[0]))
+        .map(([year, weeks]) => ({
+          id: `updated:${year}`,
+          label: year,
+          icon: "mdi:calendar",
+          apps: [],
+          children: [...weeks.entries()].sort((a, b) => b[1].start - a[1].start)
+            .map(([week, details]) => ({
+              id: `updated:${week}`,
+              label: details.label,
+              icon: "mdi:calendar-range",
+              apps: [],
+              children: [...details.days.entries()]
+                .sort((a, b) => b[1].timestamp - a[1].timestamp)
+                .map(([day, details]) => ({
+                  id: `updated:${day}`,
+                  label: dayLabel(details.timestamp),
+                  icon: "mdi:calendar-blank",
+                  apps: details.apps.sort((a, b) =>
+                    (a.sort_name || a.name).localeCompare(b.sort_name || b.name)
+                  ),
+                  children: [],
+                })),
+            })),
+        }));
+      if (undated.length) {
+        nodes.push({
+          id: "updated:undated",
+          label: "Undated",
+          icon: "mdi:calendar-question",
+          apps: undated,
+          children: [],
+        });
+      }
+      return nodes;
+    }
+
+    function updatedNodeCount(node) {
+      return node.apps.length +
+        node.children.reduce((total, child) => total + updatedNodeCount(child), 0);
+    }
+
+    function renderUpdatedNode(node) {
+      const group = document.createElement("div");
+      group.id = node.id.replace(/[^a-z0-9]+/gi, "-");
+      group.className = "tree-group";
+      group.dataset.sectionId = node.id;
+      const button = document.createElement("button");
+      button.className = "tree-row";
+      button.type = "button";
+      const collapsed = state.collapsed.includes(node.id);
+      button.setAttribute("aria-expanded", String(!collapsed));
+      button.append(icon(CHEVRON_ICON, "tree-row__chevron"));
+      button.append(icon(node.icon, "tree-row__icon"));
+      const label = document.createElement("span");
+      label.className = "tree-row__label";
+      label.textContent = node.label;
+      const count = document.createElement("span");
+      count.className = "tree-row__count";
+      count.textContent = updatedNodeCount(node);
+      button.append(label, count);
+
+      const children = document.createElement("div");
+      children.className = "tree-children";
+      children.hidden = collapsed;
+      for (const app of node.apps) children.append(renderApp(app));
+      for (const child of node.children) children.append(renderUpdatedNode(child));
+      button.addEventListener("click", () => {
+        const nextCollapsed = !children.hidden;
+        state.collapsed = nextCollapsed
+          ? [...new Set([...state.collapsed, node.id])]
+          : state.collapsed.filter((id) => id !== node.id);
+        saveState();
+        syncCollapsed();
+      });
+      group.append(button, children);
+      return group;
+    }
+
+    function renderUpdated() {
+      const nodes = buildUpdatedTree(rootApps().filter(matchesSearch));
+      if (!nodes.length) return renderEmpty("No updated apps.");
+      for (const node of nodes) refs.tree.append(renderUpdatedNode(node));
+    }
+
+    function renderEmpty(message) {
+      const empty = document.createElement("p");
+      empty.id = "sidebar-empty";
+      empty.textContent = message;
+      refs.tree.append(empty);
+    }
+
+    /**
+     * Apply `state.collapsed` to the tree already on screen.
+     *
+     * Collapsing cannot change anything a re-render would compute differently —
+     * labels, counts, ordering and the app rows are all identical either side of
+     * it — so the two attributes are flipped in place instead. That is not just
+     * cheaper, it is the only version that behaves: rebuilding destroys the
+     * button that was just clicked, which drops keyboard focus to <body> and
+     * denies the chevron's `transition: transform .2s` any chance to run.
+     */
+    function syncCollapsed() {
+      for (const group of refs.tree.querySelectorAll(".tree-group")) {
+        const forceOpen = group.dataset.searchAware === "true" && Boolean(state.search);
+        const collapsed = state.collapsed.includes(group.dataset.sectionId) && !forceOpen;
+        group.querySelector(":scope > .tree-row")
+          ?.setAttribute("aria-expanded", String(!collapsed));
+        const children = group.querySelector(":scope > .tree-children");
+        if (children) children.hidden = collapsed;
+      }
+    }
+
+    function renderTree() {
+      hideTooltipNow();
+      refs.tree.replaceChildren();
+      refs.viewButtons.forEach((button) => {
+        button.classList.toggle("active", button.dataset.view === state.view);
+      });
+      if (state.view === "recent") return renderRecent();
+      if (state.view === "updated") return renderUpdated();
+
+      const root = currentAppspace();
+      if (!root) return renderEmpty("No appspaces found.");
+      const byPath = new Map();
+      for (const app of rootApps()) {
+        const key = pathKey(app.appspace, app.sections);
+        byPath.set(key, [...(byPath.get(key) ?? []), app]);
+      }
+
+      for (const app of byPath.get(pathKey(root.name, [])) ?? []) {
+        if (matchesSearch(app)) refs.tree.append(renderApp(app));
+      }
+      for (const section of root.sections) {
+        const rendered = renderSection(section, root.name, [], byPath);
+        if (rendered.dataset.hasMatches === "true") refs.tree.append(rendered);
+      }
+      if (!refs.tree.childElementCount) renderEmpty("Nothing matches that search.");
+    }
+
+    /**
+     * Open `app` in the preview, or one of its `children:` pages.
+     *
+     * A child is just another file in the same folder, served the same way the
+     * entry is — same origin, so the background and accent sync still work.
+     */
+    function openApp(app, updateHash = true, child = null) {
+      const name = child ? `${app.name} · ${childLabel(child)}` : app.name;
+      state.activeApp = app.id;
+      state.activeChild = child;
+      state.recent = [app.id, ...state.recent.filter((id) => id !== app.id)].slice(0, RECENT_LIMIT);
+      resetPreviewBackground();
+      applyAppColor(app.color);
+      refs.previewFrame.hidden = false;
+      refs.previewFrame.src = child ? `/apps/${app.path}/${child}` : app.url;
+      refs.previewFrame.title = name;
+      refs.previewEmpty.hidden = true;
+      document.title = `${name} · s5`;
+      if (updateHash) {
+        const hash = new URLSearchParams({ app: app.id });
+        if (child) hash.set("child", child);
+        history.replaceState(null, "", `#${hash}`);
+      }
+      saveState();
+      renderTree();
+      if (matchMedia(MOBILE_QUERY).matches) setWidth("collapsed");
+    }
+
+    function showAppspaceLanding() {
+      const root = currentAppspace();
+      resetPreviewBackground();
+      refs.previewFrame.src = "about:blank";
+      refs.previewFrame.hidden = true;
+      refs.previewFrame.title = "Appspace overview";
+      refs.previewEmpty.hidden = false;
+      refs.previewAppspace.textContent = root?.name ?? "s5";
+      document.title = `${root?.name ?? "s5"} · s5`;
+      if (location.hash) {
+        history.replaceState(null, "", location.pathname + location.search);
+      }
+    }
+
+    function setWidth(width) {
+      state.width = width;
+      refs.sidebar.dataset.width = width;
+      refs.backdrop.hidden = width === "collapsed" ||
+        !matchMedia(MOBILE_QUERY).matches;
+      saveState();
+    }
+
+    function cycleWidth() {
+      setWidth(nextIn(SIZES, state.width));
+    }
+
+    /**
+     * How far each nesting level steps right.
+     *
+     * Separate from the width on purpose: a narrow sidebar is the case where
+     * indentation costs the most, so the two need to be adjustable against
+     * each other rather than bundled into one "compact" mode.
+     */
+    function setIndent(indent) {
+      state.indent = INDENTS.includes(indent) ? indent : INDENTS[0];
+      refs.sidebar.dataset.indent = state.indent;
+      saveState();
+    }
+
+    function cycleIndent() {
+      setIndent(nextIn(INDENTS, state.indent));
+    }
+
+    function parseRgb(color) {
+      const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+      return match ? { r: +match[1], g: +match[2], b: +match[3] } : null;
+    }
+
+    function isLightBackground(color) {
+      const rgb = parseRgb(color);
+      if (!rgb) return true;
+      return (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255 > LIGHT_TONE_THRESHOLD;
+    }
+
+    function resetPreviewBackground() {
+      const root = document.documentElement;
+      root.style.removeProperty("--preview-bg");
+      root.style.removeProperty("--preview-bg-image");
+      root.style.removeProperty("--app-color");
+      root.style.removeProperty("--app-tint-image");
+      root.style.removeProperty("--app-accent");
+      delete document.body.dataset.previewTone;
+    }
+
+    function applyAppColor(color) {
+      if (!color || !CSS.supports("color", color)) return;
+      const root = document.documentElement;
+      root.style.setProperty("--app-color", color);
+      root.style.setProperty(
+        "--app-tint-image",
+        `linear-gradient(color-mix(in srgb, ${color} ${TINT_TOP}%, transparent), ` +
+          `color-mix(in srgb, ${color} ${TINT_BOTTOM}%, transparent))`,
+      );
+      root.style.setProperty(
+        "--app-accent",
+        `color-mix(in srgb, ${color} ${ACCENT_MIX}%, transparent)`,
+      );
+    }
+
+    function syncPreviewBackground() {
+      try {
+        const doc = refs.previewFrame.contentDocument;
+        if (!doc) return;
+        const accent = getComputedStyle(doc.documentElement).getPropertyValue("--accent").trim();
+        if (accent) applyAppColor(accent);
+        for (const element of [doc.body, doc.documentElement]) {
+          if (!element) continue;
+          const style = getComputedStyle(element);
+          const background = style.backgroundColor;
+          if (
+            !background || background === "rgba(0, 0, 0, 0)" || background === "transparent"
+          ) continue;
+
+          const root = document.documentElement;
+          root.style.setProperty("--preview-bg", background);
+          root.style.setProperty(
+            "--preview-bg-image",
+            style.backgroundImage && style.backgroundImage !== "none" ? style.backgroundImage : "none",
+          );
+          document.body.dataset.previewTone = isLightBackground(background) ? "light" : "dark";
+          return;
+        }
+      } catch {
+        // Preview background adaptation is available only to same-origin apps.
+      }
+    }
+
+    /**
+     * Drop collapsed ids that no longer name anything.
+     *
+     * Collapsing wrote an id and nothing ever removed one, so a renamed
+     * section — or a date node from a day no app carries any more — stayed in
+     * storage for good. The whole valid set is derivable from the manifest, so
+     * recomputing it is cheaper than tracking removals, and it keeps this
+     * bounded once the state lives in a table rather than a string.
+     */
+    function pruneCollapsed() {
+      const valid = new Set(
+        manifest.appspaces.flatMap((root) => allSectionIds(root.sections, root.name)),
+      );
+      const walk = (nodes) => {
+        for (const node of nodes) {
+          valid.add(node.id);
+          walk(node.children);
+        }
+      };
+      walk(buildUpdatedTree(apps));
+      state.collapsed = state.collapsed.filter((id) => valid.has(id));
+    }
+
+    function allSectionIds(sections, appspace, parents = []) {
+      return sections.flatMap((section) => {
+        const path = [...parents, section.name];
+        return [pathKey(appspace, path), ...allSectionIds(section.sections, appspace, path)];
+      });
+    }
+
+    /* Every hotkey lives here: the handler dispatches off it and the help
+       dialog is rendered from it, so a new shortcut is a single line. */
+    const HOTKEYS = [
+      ["/", "Show this help", () => toggleHelp()],
+      ["s", "Cycle the sidebar size", () => cycleWidth()],
+      ["d", "Cycle the tree indentation", () => cycleIndent()],
+      ["k", "Focus the search box", () => focusSearch()],
+      ["x", "Collapse or expand all sections", () => toggleAllSections()],
+      ["Esc", "Close help, menus and cards", null],
+    ];
+
+    function toggleAllSections() {
+      const root = currentAppspace();
+      if (!root) return;
+      const ids = allSectionIds(root.sections, root.name);
+      state.collapsed = ids.some((id) => !state.collapsed.includes(id)) ? ids : [];
+      saveState();
+      syncCollapsed();
+    }
+
+    function focusSearch() {
+      // Searching a sidebar you cannot see is useless, so open it first.
+      if (state.width === "collapsed") setWidth(SIZES[0]);
+      refs.search.focus();
+      refs.search.select();
+    }
+
+    function toggleHelp() {
+      if (refs.help.open) return refs.help.close();
+      if (!refs.help.childElementCount) {
+        const heading = document.createElement("h2");
+        heading.textContent = "Keyboard shortcuts";
+        refs.help.append(heading);
+        for (const [key, label] of HOTKEYS) {
+          const row = document.createElement("div");
+          row.className = "help-row";
+          const kbd = document.createElement("kbd");
+          kbd.textContent = key;
+          const text = document.createElement("span");
+          text.textContent = label;
+          row.append(kbd, text);
+          refs.help.append(row);
+        }
+      }
+      refs.help.showModal();
+    }
+
+    function bindEvents() {
+      refs.rootCycle.addEventListener("click", cycleAppspace);
+      refs.rootMenuToggle.addEventListener("click", (event) => {
+        event.stopPropagation();
+        setRootMenu(refs.rootMenu.hidden);
+      });
+      refs.search.addEventListener("input", () => {
+        state.search = refs.search.value;
+        saveState();
+        renderTree();
+      });
+      refs.viewButtons.forEach((button) =>
+        button.addEventListener("click", () => {
+          state.view = button.dataset.view;
+          saveState();
+          renderTree();
+        })
+      );
+      refs.expandToggle.addEventListener("click", toggleAllSections);
+      refs.toggle.addEventListener("click", cycleWidth);
+      refs.backdrop.addEventListener("click", () => setWidth("collapsed"));
+      refs.previewFrame.addEventListener("load", syncPreviewBackground);
+      /* The anchor and the card are two separate hover targets, so both run
+         the same pair: enter shows (or keeps) the card, leave hides it unless
+         the pointer/focus landed on the other one. */
+      const staysOpen = (event) =>
+        refs.tooltip.contains(event.relatedTarget) || !!tooltipAnchor?.contains(event.relatedTarget);
+      const onTooltipEnter = (event) => {
+        const anchor = event.target.closest?.(".app-row__external");
+        if (anchor) {
+          if (anchor !== tooltipAnchor) showTooltip(anchor);
+          else cancelTooltipHide();
+        } else if (refs.tooltip.contains(event.target)) {
+          cancelTooltipHide();
+        }
+      };
+      const onTooltipLeave = (event) => {
+        if (!staysOpen(event)) scheduleTooltipHide();
+      };
+      for (const target of [refs.tree, refs.tooltip]) {
+        target.addEventListener("pointerover", onTooltipEnter);
+        target.addEventListener("focusin", onTooltipEnter);
+        target.addEventListener("pointerout", onTooltipLeave);
+        target.addEventListener("focusout", onTooltipLeave);
+      }
+      refs.tree.addEventListener("scroll", () => {
+        if (tooltipAnchor) positionTooltip(tooltipAnchor);
+      }, { passive: true });
+      globalThis.addEventListener("resize", () => {
+        if (tooltipAnchor) positionTooltip(tooltipAnchor);
+      });
+      // Covers the back/forward cache too, which "unload" does not.
+      globalThis.addEventListener("pagehide", flushState);
+      globalThis.addEventListener("message", (event) => {
+        if (event.source !== refs.previewFrame.contentWindow) return;
+        if (event.data?.type === PREVIEW_BG_MESSAGE) syncPreviewBackground();
+      });
+      document.addEventListener("click", (event) => {
+        if (!refs.rootMenu.hidden && !refs.rootMenu.contains(event.target)) {
+          setRootMenu(false);
+        }
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          setRootMenu(false);
+          hideTooltipNow();
+          return;
+        }
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "b") {
+          event.preventDefault();
+          cycleWidth();
+          return;
+        }
+        // Bare letters belong to whatever the user is typing into.
+        if (event.metaKey || event.ctrlKey || event.altKey) return;
+        const target = event.target;
+        if (target.isContentEditable || /^(input|textarea|select)$/i.test(target.tagName)) return;
+        // "?" is the conventional twin of "/" on layouts that need a shift.
+        const key = event.key === "?" ? "/" : event.key.toLowerCase();
+        const hotkey = HOTKEYS.find(([name, , run]) => run && name === key);
+        if (!hotkey) return;
+        const [, , run] = hotkey;
+        event.preventDefault();
+        run();
+      });
+    }
+
+    async function init() {
+      bindEvents();
+      setWidth(state.width);
+      setIndent(state.indent);
+      refs.search.value = state.search;
+      await loadSprite();
+      try {
+        const response = await fetch(API_URL);
+        if (!response.ok) throw new Error(`Discovery returned ${response.status}`);
+        manifest = await response.json();
+        apps = manifest.apps;
+        pruneCollapsed();
+
+        if (!manifest.appspaces.some((item) => item.name === state.selectedAppspace)) {
+          state.selectedAppspace = manifest.appspaces[0]?.name ?? null;
+        }
+        renderRoot();
+        renderTree();
+
+        const hash = new URLSearchParams(location.hash.replace(/^#/, ""));
+        const active = apps.find((app) => app.id === hash.get("app"));
+        if (active) {
+          const child = hash.get("child");
+          state.selectedAppspace = active.appspace;
+          renderRoot();
+          openApp(active, false, active.children?.includes(child) ? child : null);
+        } else {
+          state.activeApp = null;
+          state.activeChild = null;
+          showAppspaceLanding();
+        }
+        saveState();
+      } catch (error) {
+        refs.rootName.textContent = "Failed to load apps";
+        refs.rootDescription.textContent = error?.message || "Unknown error";
+        renderEmpty("The app list could not be loaded.");
+      }
+    }
+
+    init();
+    </script>
+  </body>
+</html>

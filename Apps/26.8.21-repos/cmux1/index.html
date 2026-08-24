@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>cmux1</title>
+    <link rel="icon" type="image/svg+xml" sizes="any" href="./favicon.svg?v=2" />
+    <link rel="stylesheet" href="/apps/_shared/1-repos/xterm.css" />
+    <style>
+    :root {
+      color-scheme: light dark;
+
+      /* Read by the parent app browser to tint its chrome. */
+      --accent: #6fd6c4;
+
+      /* One hue, stepped by lightness. Deep slate, the color of a terminal left open. */
+      --canvas: #0b0e13;
+      --rail: #0b0e13;
+      --raised: #12161d;
+      --inset: #090c10;
+
+      --line: rgba(255, 255, 255, 0.07);
+      --line-soft: rgba(255, 255, 255, 0.04);
+      --line-strong: rgba(255, 255, 255, 0.14);
+
+      --text: #e6ebf2;
+      --text-2: #a5b0bf;
+      --text-3: #6d7987;
+      --text-4: #495260;
+
+      /* The only accent: phosphor. It means alive, selected, or focused — nothing else. */
+      --phosphor: #6fd6c4;
+      --phosphor-dim: rgba(111, 214, 196, 0.16);
+
+      --r-sm: 5px;
+      --ease: cubic-bezier(0.23, 1, 0.32, 1);
+
+      /* Same face the machine's terminal uses, served from ~/Library/Fonts so
+         canvas can paint Nerd glyphs that a CSS local() name never reaches. */
+      --font-ui: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --font-term: "cmux1 Mono", "MesloLGS Nerd Font Mono", "Hack Nerd Font Mono", "Apple Color Emoji", Menlo, Monaco, ui-monospace, monospace;
+
+      --pl-name: #f4b8c5;
+      --pl-name-fg: #3d1f2a;
+      --pl-place: #e8d5a3;
+      --pl-place-fg: #3a3020;
+      --pl-live: #6fd6c4;
+      --pl-live-fg: #0b0e13;
+      --pl-idle: #232a33;
+      --pl-idle-fg: #a5b0bf;
+      --pl-dead: #4a3038;
+      --pl-dead-fg: #e08b8b;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --canvas: #f4f6f8;
+        --rail: #f4f6f8;
+        --raised: #ffffff;
+        --inset: #e9edf1;
+
+        --line: rgba(18, 27, 38, 0.11);
+        --line-soft: rgba(18, 27, 38, 0.07);
+        --line-strong: rgba(18, 27, 38, 0.20);
+
+        --text: #17202b;
+        --text-2: #465363;
+        --text-3: #5f6c7a;
+        --text-4: #737f8c;
+
+        --phosphor: #168c7d;
+        --phosphor-dim: rgba(22, 140, 125, 0.15);
+
+        --pl-live: #168c7d;
+        --pl-live-fg: #ffffff;
+        --pl-idle: #dce2e8;
+        --pl-idle-fg: #465363;
+        --pl-dead: #f1dadd;
+        --pl-dead-fg: #9b3e4d;
+      }
+
+      .new:hover { background: #e8edf1; }
+      .session:hover { background: #e9edf1; }
+      .session[data-dead="true"] .pulse { background: #b96572; }
+      .close:hover,
+      .prefs-x:hover { background: rgba(18, 27, 38, 0.07); }
+      #prefs { box-shadow: 0 24px 64px rgba(18, 27, 38, 0.22); }
+      #prefs::backdrop { background: rgba(70, 83, 99, 0.35); }
+      .seg button:hover { background: rgba(18, 27, 38, 0.045); }
+      .sessions::-webkit-scrollbar-thumb { background: rgba(18, 27, 38, 0.14); }
+    }
+
+    @font-face {
+      font-family: "cmux1 Mono";
+      src: url("/api/apps/1-repos/font") format("truetype");
+      font-display: block;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+    }
+
+    body {
+      display: grid;
+      grid-template-columns: 244px 1fr;
+      background: var(--canvas);
+      color: var(--text);
+      font-family: var(--font-ui);
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+
+    /* ---------- rail ---------- */
+
+    .rail {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      background: var(--rail);
+      border-right: 1px solid var(--line);
+    }
+
+    .rail-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 16px 12px 12px 16px;
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .brand strong {
+      font-family: var(--font-term);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+
+    .brand span {
+      font-family: var(--font-term);
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--text-4);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Optional powerline rail, kept alongside the original compact labels. */
+    .power-brand,
+    .session-pl {
+      display: none;
+    }
+
+    body[data-rail-style="powerline"] .brand,
+    body[data-rail-style="powerline"] .name {
+      display: none;
+    }
+
+    body[data-rail-style="powerline"] .power-brand,
+    body[data-rail-style="powerline"] .session-pl {
+      display: inline-flex;
+    }
+
+    .pl {
+      align-items: center;
+      gap: 3px;
+      height: 20px;
+      max-width: 100%;
+      overflow: hidden;
+      font: 12px/1 var(--font-term);
+    }
+
+    .pl-seg {
+      display: inline-flex;
+      transition: background 260ms var(--ease), color 260ms var(--ease);
+      align-items: center;
+      min-width: 0;
+      height: 20px;
+      padding: 0 8px;
+      border-radius: 6px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .pl-name { color: var(--pl-name-fg); background: var(--pl-name); }
+    .pl-place { color: var(--pl-place-fg); background: var(--pl-place); }
+    .pl-live { color: var(--pl-live-fg); background: var(--pl-live); }
+    .pl-idle { color: var(--pl-idle-fg); background: var(--pl-idle); }
+    .pl-dead { color: var(--pl-dead-fg); background: var(--pl-dead); }
+
+    .session-pl {
+      width: 100%;
+      min-width: 0;
+    }
+
+    body[data-rail-style="powerline"] .session { align-items: start; }
+    body[data-rail-style="powerline"] .pulse { margin-top: 7px; }
+    body[data-rail-style="powerline"] .close { margin-top: 1px; }
+    body[data-rail-style="powerline"] .tail { margin-top: 3px; }
+    .session-pl .pl-seg { padding: 0 6px; font-size: 11px; }
+    .session-pl .pl-seg:last-child {
+      flex: 1 1 auto;
+      justify-content: flex-start;
+    }
+
+    .new {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      flex: none;
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      background: var(--raised);
+      color: var(--text-2);
+      cursor: pointer;
+      transition: background 140ms var(--ease), color 140ms var(--ease),
+        border-color 140ms var(--ease), transform 100ms var(--ease);
+    }
+
+    .new::after {
+      /* 44px hit area around a 28px control. */
+      content: "";
+      position: absolute;
+      width: 44px;
+      height: 44px;
+    }
+
+    .new:hover {
+      background: #171c24;
+      color: var(--text);
+      border-color: var(--line-strong);
+    }
+
+    .new:active {
+      transform: scale(0.97);
+    }
+
+    .new:focus-visible {
+      outline: 2px solid var(--phosphor);
+      outline-offset: 2px;
+    }
+
+    .sessions {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 4px 8px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .session {
+      position: relative;
+      display: grid;
+      grid-template-columns: 8px 1fr 20px;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 8px 8px 10px;
+      border: 1px solid transparent;
+      border-radius: var(--r-sm);
+      cursor: pointer;
+      text-align: left;
+      background: none;
+      color: inherit;
+      font: inherit;
+      transition: background 140ms var(--ease);
+    }
+
+    .session:hover {
+      background: #10141a;
+    }
+
+    .session[aria-current="true"] {
+      background: var(--raised);
+      border-color: var(--line);
+    }
+
+    .session:focus-visible {
+      outline: 2px solid var(--phosphor);
+      outline-offset: -1px;
+    }
+
+    /* Signature: the pulse. It brightens the instant bytes arrive, then decays,
+       so the rail shows which shells are working without switching to them. */
+    .pulse {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--text-4);
+      transition: background 600ms linear, box-shadow 600ms linear;
+    }
+
+    .session[data-live="true"] .pulse {
+      background: var(--phosphor);
+      box-shadow: 0 0 0 3px var(--phosphor-dim);
+      transition: background 90ms var(--ease), box-shadow 90ms var(--ease);
+    }
+
+    .session[data-dead="true"] .pulse {
+      background: #4a3038;
+    }
+
+    .meta {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .name {
+      font-family: var(--font-term);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .session[aria-current="true"] .name {
+      color: var(--text);
+    }
+
+    /* The live tail of that shell's output — the reason the rail is worth glancing at. */
+    .tail {
+      font-family: var(--font-term);
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--text-4);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-height: 15px;
+    }
+
+    .close {
+      width: 20px;
+      height: 20px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 4px;
+      background: none;
+      color: var(--text-4);
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 140ms var(--ease), color 140ms var(--ease), background 140ms var(--ease);
+    }
+
+    .session:hover .close,
+    .close:focus-visible {
+      opacity: 1;
+    }
+
+    .close:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .rail-foot {
+      padding: 10px 10px 14px 16px;
+      border-top: 1px solid var(--line-soft);
+      font-family: var(--font-term);
+      font-size: 10.5px;
+      color: var(--text-4);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    kbd {
+      font: inherit;
+      color: var(--text-3);
+    }
+
+    .prefs-btn {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      margin-left: auto;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      color: var(--text-3);
+      background: var(--raised);
+      cursor: pointer;
+      transition: color 140ms var(--ease), border-color 140ms var(--ease);
+    }
+
+    .prefs-btn:hover { color: var(--text); border-color: var(--line-strong); }
+    .prefs-btn:focus-visible { outline: 2px solid var(--phosphor); outline-offset: 2px; }
+
+    /* ---------- settings ---------- */
+
+    #prefs {
+      width: min(420px, calc(100vw - 32px));
+      padding: 0;
+      border: 1px solid var(--line-strong);
+      border-radius: 12px;
+      color: var(--text);
+      background: var(--raised);
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+    }
+
+    #prefs::backdrop { background: rgba(5, 7, 10, 0.6); }
+
+    #prefs[open] { animation: prefs-in 160ms var(--ease); }
+
+    @keyframes prefs-in {
+      from { opacity: 0; transform: translateY(6px) scale(0.985); }
+    }
+
+    .prefs-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 14px 13px 16px;
+      border-bottom: 1px solid var(--line-soft);
+    }
+
+    #prefs h2 {
+      margin: 0;
+      font: 500 13px var(--font-term);
+      color: var(--text);
+    }
+
+    .prefs-x {
+      display: grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      border: 0;
+      border-radius: 5px;
+      background: none;
+      color: var(--text-4);
+      cursor: pointer;
+    }
+
+    .prefs-x:hover { color: var(--text); background: rgba(255, 255, 255, 0.06); }
+    .prefs-x:focus-visible { outline: 2px solid var(--phosphor); outline-offset: 1px; }
+
+    .prefs-body { padding: 2px 16px; }
+
+    .group {
+      padding: 14px 0;
+      border-bottom: 1px solid var(--line-soft);
+    }
+
+    .group:last-child { border-bottom: 0; }
+
+    .group h3 {
+      margin: 0 0 11px;
+      font: 500 10px var(--font-ui);
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+      color: var(--text-4);
+    }
+
+    .field { margin-bottom: 14px; }
+    .field:last-child { margin-bottom: 0; }
+
+    .field-label {
+      display: block;
+      margin-bottom: 7px;
+      font: 12px var(--font-term);
+      color: var(--text-2);
+    }
+
+    .field-note {
+      margin: 7px 0 0;
+      font: 11px var(--font-ui);
+      color: var(--text-4);
+    }
+
+    /* Pick the style by looking at it, not by reading its name. */
+    .seg {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: 1fr;
+      gap: 2px;
+      padding: 2px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--inset);
+    }
+
+    .seg button {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-width: 0;
+      padding: 9px 8px 8px;
+      border: 0;
+      border-radius: 6px;
+      background: none;
+      color: var(--text-3);
+      cursor: pointer;
+      transition: background 140ms var(--ease), color 140ms var(--ease);
+    }
+
+    .seg button:hover { color: var(--text-2); background: rgba(255, 255, 255, 0.035); }
+
+    .seg button[aria-checked="true"] {
+      color: var(--text);
+      background: var(--raised);
+      box-shadow: inset 0 0 0 1px var(--line-strong);
+    }
+
+    .seg button:focus-visible { outline: 2px solid var(--phosphor); outline-offset: -2px; }
+
+    .seg-name { font: 500 11px var(--font-ui); }
+
+    .seg .pl,
+    .sample {
+      display: inline-flex;
+      pointer-events: none;
+      max-width: 100%;
+    }
+
+    .pl.mini { height: 18px; font-size: 10.5px; }
+    .pl.mini .pl-seg { padding: 0 6px 0 7px; }
+
+    .sample {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 18px;
+      font: 11px var(--font-term);
+      color: var(--text-3);
+      white-space: nowrap;
+    }
+
+    .sample-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--phosphor);
+      box-shadow: 0 0 0 2.5px var(--phosphor-dim);
+    }
+
+    .field-row { display: flex; align-items: center; gap: 12px; }
+    .field-row .field-label { flex: 1; margin: 0; }
+
+    .field-row select {
+      width: 184px;
+      padding: 6px 8px;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--r-sm);
+      color: var(--text);
+      background: var(--inset);
+      font: 12px var(--font-term);
+    }
+
+    .field-row select:focus-visible { outline: 2px solid var(--phosphor); outline-offset: 1px; }
+
+    .field-row input[type="range"] { flex: 1; max-width: 184px; accent-color: var(--phosphor); }
+
+    .field-row output {
+      width: 30px;
+      color: var(--text-2);
+      text-align: right;
+      font: 12px var(--font-term);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .switch { position: relative; width: 36px; height: 20px; flex: none; }
+
+    .switch input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .switch span {
+      position: absolute;
+      inset: 0;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      background: var(--inset);
+      pointer-events: none;
+      transition: background 140ms var(--ease), border-color 140ms var(--ease);
+    }
+
+    .switch span::after {
+      content: "";
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--text-3);
+      transition: transform 160ms var(--ease), background 140ms var(--ease);
+    }
+
+    .switch input:checked + span { background: var(--phosphor-dim); border-color: var(--phosphor); }
+    .switch input:checked + span::after { transform: translateX(16px); background: var(--phosphor); }
+    .switch input:focus-visible + span { outline: 2px solid var(--phosphor); outline-offset: 2px; }
+
+    .prefs-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 12px 16px 14px;
+      border-top: 1px solid var(--line-soft);
+    }
+
+    .prefs-actions button {
+      padding: 7px 14px;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--r-sm);
+      color: var(--text-2);
+      background: var(--inset);
+      cursor: pointer;
+      font: 500 12px var(--font-ui);
+      transition: color 140ms var(--ease), border-color 140ms var(--ease);
+    }
+
+    .prefs-actions button:hover { color: var(--text); border-color: var(--line-strong); }
+    .prefs-actions button:focus-visible { outline: 2px solid var(--phosphor); outline-offset: 2px; }
+
+    #prefs-done { border-color: transparent; color: var(--canvas); background: var(--phosphor); }
+    #prefs-done:hover { color: var(--canvas); filter: brightness(1.08); }
+
+    /* ---------- stage ---------- */
+
+    .stage {
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      background: var(--inset);
+    }
+
+    .pane {
+      position: absolute;
+      inset: 0;
+      padding: 14px 8px 10px 16px;
+      visibility: hidden;
+    }
+
+    .pane[data-active="true"] {
+      visibility: visible;
+    }
+
+    .pane .xterm {
+      height: 100%;
+    }
+
+    .empty[hidden] {
+      display: none;
+    }
+
+    .empty {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-content: center;
+      justify-items: center;
+      gap: 14px;
+      text-align: center;
+      color: var(--text-3);
+    }
+
+    .empty strong {
+      font-family: var(--font-term);
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text-2);
+    }
+
+    .empty p {
+      margin: 0;
+      font-size: 13px;
+      max-width: 34ch;
+      text-wrap: pretty;
+    }
+
+    .empty button {
+      font: 500 13px var(--font-ui);
+      color: var(--canvas);
+      background: var(--phosphor);
+      border: 0;
+      border-radius: var(--r-sm);
+      padding: 8px 14px;
+      cursor: pointer;
+      transition: transform 100ms var(--ease), filter 140ms var(--ease);
+    }
+
+    .empty button:hover {
+      filter: brightness(1.08);
+    }
+
+    .empty button:active {
+      transform: scale(0.97);
+    }
+
+    .sessions::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .sessions::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        transition-duration: 1ms !important;
+      }
+    }
+    </style>
+  </head>
+  <body>
+    <nav class="rail" id="sidebar">
+      <div class="rail-head" id="sidebar-header">
+        <div class="brand" id="app-brand">
+          <strong>cmux1</strong>
+          <span id="host">—</span>
+        </div>
+        <div class="pl power-brand" id="power-brand" aria-label="cmux1"></div>
+        <button class="new" id="new" title="New terminal (⌘T)" aria-label="New terminal">
+          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+            <path
+              d="M7 2v10M2 7h10"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+      </div>
+      <div class="sessions" id="sessions"></div>
+      <div class="rail-foot" id="sidebar-footer">
+        <span><kbd>⌘T</kbd> new</span>
+        <span><kbd>⌘1–9</kbd> switch</span>
+        <button class="prefs-btn" id="prefs-open" type="button" title="Settings"
+          aria-label="Settings">
+          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+            <path d="M7 9.2A2.2 2.2 0 1 0 7 4.8a2.2 2.2 0 0 0 0 4.4z" fill="none"
+              stroke="currentColor" stroke-width="1.4" />
+            <path
+              d="M7 1.4v1.3M7 11.3v1.3M2.7 2.7l.9.9M10.4 10.4l.9.9M1.4 7h1.3M11.3 7h1.3M2.7 11.3l.9-.9M10.4 3.6l.9-.9"
+              stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+          </svg>
+        </button>
+      </div>
+    </nav>
+
+    <main class="stage" id="stage">
+      <div class="empty" id="empty">
+        <strong>No terminals open</strong>
+        <p>Every terminal is a real shell on this machine. Closing one ends it.</p>
+        <button id="empty-new">Open a terminal</button>
+      </div>
+      <dialog id="prefs" aria-labelledby="prefs-title">
+        <div class="prefs-head" id="settings-header">
+          <h2 id="prefs-title">Settings</h2>
+          <button class="prefs-x" id="prefs-x" type="button" aria-label="Close settings">
+            <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 1l8 8M9 1l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+
+        <div class="prefs-body" id="settings-body">
+          <section class="group">
+            <h3>Look</h3>
+
+            <div class="field">
+              <span class="field-label" id="lbl-rail">Sidebar labels</span>
+              <div class="seg" id="seg-rail" role="radiogroup" aria-labelledby="lbl-rail">
+                <button type="button" role="radio" data-value="classic" aria-checked="true">
+                  <span class="sample"><span class="sample-dot"></span>term 3</span>
+                  <span class="seg-name">Plain</span>
+                </button>
+                <button type="button" role="radio" data-value="powerline" aria-checked="false">
+                  <span class="pl mini" id="pv-rail"></span>
+                  <span class="seg-name">Blocks</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="field">
+              <span class="field-label" id="lbl-prompt">Prompt style</span>
+              <div class="seg" id="seg-prompt" role="radiogroup" aria-labelledby="lbl-prompt">
+                <button type="button" role="radio" data-value="native" aria-checked="true">
+                  <span class="sample">~/dev %</span>
+                  <span class="seg-name">Native</span>
+                </button>
+                <button type="button" role="radio" data-value="blocks" aria-checked="false">
+                  <span class="pl mini" id="pv-prompt"></span>
+                  <span class="seg-name">Blocks</span>
+                </button>
+              </div>
+              <p class="field-note">Applies to terminals you open next.</p>
+            </div>
+          </section>
+
+          <section class="group">
+            <h3>Output</h3>
+            <div class="field field-row">
+              <label class="field-label" for="pref-tint">Filename colors</label>
+              <span class="switch">
+                <input id="pref-tint" type="checkbox" />
+                <span></span>
+              </span>
+            </div>
+          </section>
+
+          <section class="group">
+            <h3>Type</h3>
+
+            <div class="field field-row">
+              <label class="field-label" for="pref-face">Font</label>
+              <select id="pref-face">
+                <option value="cmux1">cmux1 / Nerd Font</option>
+                <option value="system">System monospace</option>
+                <option value="menlo">Menlo</option>
+                <option value="plex">IBM Plex Mono</option>
+                <option value="jetbrains">JetBrains Mono</option>
+                <option value="fira">Fira Code</option>
+              </select>
+            </div>
+
+            <div class="field field-row">
+              <label class="field-label" for="pref-size">Size</label>
+              <input id="pref-size" type="range" min="10" max="20" step="1" value="12" />
+              <output id="pref-size-out" for="pref-size">12</output>
+            </div>
+
+            <div class="field field-row">
+              <label class="field-label" for="pref-lead">Leading</label>
+              <input id="pref-lead" type="range" min="1" max="2" step="0.05" value="1" />
+              <output id="pref-lead-out" for="pref-lead">1</output>
+            </div>
+          </section>
+        </div>
+
+        <div class="prefs-actions" id="settings-actions">
+          <button id="prefs-reset" type="button">Reset</button>
+          <button id="prefs-done" type="button" autofocus>Done</button>
+        </div>
+      </dialog>
+    </main>
+
+    <script src="/apps/_shared/1-repos/xterm.js"></script>
+    <script src="/apps/_shared/1-repos/xterm-addon-fit.js"></script>
+    <script src="/apps/_shared/1-repos/file-tint.js"></script>
+    <script>
+    const stage = document.getElementById("stage");
+    const list = document.getElementById("sessions");
+    const empty = document.getElementById("empty");
+
+    const darkTheme = {
+      background: "#090c10",
+      foreground: "#e6ebf2",
+      cursor: "#6fd6c4",
+      cursorAccent: "#090c10",
+      selectionBackground: "rgba(111,214,196,0.22)",
+      black: "#12161d",
+      red: "#e08b8b",
+      green: "#8fd6a8",
+      yellow: "#e2c98b",
+      blue: "#8fb6e0",
+      magenta: "#c4a2dd",
+      cyan: "#6fd6c4",
+      white: "#c5cdd8",
+      brightBlack: "#495260",
+      brightWhite: "#f2f5f9",
+    };
+
+    const lightTheme = {
+      background: "#e9edf1",
+      foreground: "#17202b",
+      cursor: "#168c7d",
+      cursorAccent: "#e9edf1",
+      selectionBackground: "rgba(22,140,125,0.22)",
+      black: "#26313d",
+      red: "#b84d5d",
+      green: "#367d4e",
+      yellow: "#8a6b16",
+      blue: "#326da8",
+      magenta: "#8157a3",
+      cyan: "#168c7d",
+      white: "#d7dde3",
+      brightBlack: "#6d7987",
+      brightRed: "#a83f50",
+      brightGreen: "#2f7547",
+      brightYellow: "#765807",
+      brightBlue: "#3978b8",
+      brightMagenta: "#765096",
+      brightCyan: "#087c70",
+      brightWhite: "#ffffff",
+    };
+
+    const appearance = matchMedia("(prefers-color-scheme: light)");
+    const currentTheme = () => appearance.matches ? lightTheme : darkTheme;
+
+    const sessions = [];
+    let active = null;
+    let counter = 0;
+    let hostLabel = "local";
+
+    appearance.addEventListener("change", () => {
+      const theme = currentTheme();
+      for (const session of sessions) session.term.options.theme = theme;
+      parent.postMessage({ type: "gallery-preview-bg-changed" }, "*");
+    });
+
+    const DEFAULTS = {
+      rail: "classic",
+      prompt: "native",
+      tint: false,
+      face: "cmux1",
+      size: 12,
+      lead: 1,
+    };
+    const FACES = {
+      cmux1:
+        '"cmux1 Mono", "MesloLGS Nerd Font Mono", "Hack Nerd Font Mono", Menlo, Monaco, ui-monospace, monospace',
+      system: "ui-monospace, monospace",
+      menlo: "Menlo, Monaco, ui-monospace, monospace",
+      plex: '"IBM Plex Mono", Menlo, ui-monospace, monospace',
+      jetbrains: '"JetBrains Mono", Menlo, ui-monospace, monospace',
+      fira: '"Fira Code", Menlo, ui-monospace, monospace',
+    };
+    let settings = { ...DEFAULTS };
+
+    function renderPowerline(element, segments) {
+      element.replaceChildren();
+      for (const segment of segments) {
+        const label = document.createElement("span");
+        label.className = `pl-seg ${segment.cls}`;
+        label.textContent = segment.text;
+        element.append(label);
+      }
+    }
+
+    function paintBrand() {
+      renderPowerline(document.getElementById("power-brand"), [
+        { cls: "pl-name", text: "cmux1" },
+        { cls: "pl-place", text: hostLabel },
+      ]);
+      paintSamples();
+    }
+
+    fetch("/api/apps/1-repos/config")
+      .then((r) => r.json())
+      .then((c) => {
+        if (c.host) hostLabel = c.host;
+        document.getElementById("host").textContent = hostLabel;
+        if (c.title) document.title = c.title;
+        paintBrand();
+      })
+      .catch(() => paintBrand());
+
+    const ESC = String.fromCharCode(27);
+    const OSC = new RegExp(ESC + "\\][^]*?(\\u0007|" + ESC + "\\\\)", "g");
+    const CSI = new RegExp(ESC + "\\[[0-9;?]*[ -/]*[@-~]", "g");
+    const CTRL = new RegExp("[\\u0000-\\u0009\\u000b\\u000c\\u000e-\\u001f\\u007f]", "g");
+
+    function stripAnsi(text) {
+      return text.replace(OSC, "").replace(CSI, "").replace(CTRL, " ");
+    }
+    const RESIZE = String.fromCharCode(0x1e);
+
+    function currentFace() {
+      return FACES[settings.face] || FACES.cmux1;
+    }
+
+    async function create() {
+      const id = ++counter;
+      const pane = document.createElement("div");
+      pane.className = "pane";
+      stage.append(pane);
+
+      const term = new Terminal({
+        fontFamily: currentFace(),
+        fontSize: settings.size,
+        lineHeight: settings.lead,
+        letterSpacing: 0,
+        cursorBlink: true,
+        cursorStyle: "bar",
+        cursorWidth: 2,
+        rescaleOverlappingGlyphs: true,
+        allowProposedApi: true,
+        theme: currentTheme(),
+      });
+      const fit = new FitAddon.FitAddon();
+      term.loadAddon(fit);
+      term.open(pane);
+      try {
+        await document.fonts.load('12px "cmux1 Mono"');
+      } catch {
+        // ~/Library/Fonts had no Nerd Font; ASCII still renders from the fallbacks.
+      }
+      fit.fit();
+      // Let the app's own shortcuts through instead of sending them to the shell.
+      term.attachCustomKeyEventHandler((event) => !isShortcut(event));
+
+      const socket = new WebSocket(
+        `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/api/apps/1-repos/terminal` +
+          `?cols=${term.cols}&rows=${term.rows}&prompt=${settings.prompt}`,
+      );
+      const session = {
+        id,
+        name: `term ${id}`,
+        pane,
+        term,
+        fit,
+        socket,
+        tint: FileTint.createState(),
+        tail: "",
+        dead: false,
+      };
+
+      const sendSize = () => {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(RESIZE + JSON.stringify({ cols: term.cols, rows: term.rows }));
+        }
+      };
+      term.onResize(sendSize);
+      socket.onopen = sendSize;
+
+      let decay;
+      socket.onmessage = (event) => {
+        const raw = String(event.data);
+        term.write(settings.tint ? FileTint.tint(raw, session.tint) : raw);
+        const clean = stripAnsi(raw).split(/\r?\n/).map((l) => l.trim())
+          .filter(Boolean).pop();
+        if (clean) session.tail = clean.slice(-60);
+        session.row.dataset.live = "true";
+        clearTimeout(decay);
+        decay = setTimeout(() => {
+          session.row.dataset.live = "false";
+          paintRow(session);
+        }, 700);
+        paintRow(session);
+      };
+      socket.onclose = () => {
+        session.dead = true;
+        session.tail = "exited";
+        paintRow(session);
+      };
+      term.onData((data) => {
+        if (socket.readyState === WebSocket.OPEN) socket.send(data);
+      });
+
+      session.row = buildRow(session);
+      list.append(session.row);
+      sessions.push(session);
+      select(session);
+    }
+
+    function buildRow(session) {
+      const row = document.createElement("div");
+      row.className = "session";
+      row.id = `session-${session.id}`;
+      row.tabIndex = 0;
+      row.dataset.live = "false";
+      row.innerHTML = `<span class="pulse"></span>
+        <span class="meta" id="session-${session.id}-meta"><span class="name"></span><span class="pl session-pl" id="session-${session.id}-blocks"></span><span class="tail"></span></span>`;
+
+      const close = document.createElement("button");
+      close.className = "close";
+      close.id = `session-${session.id}-close`;
+      close.setAttribute("aria-label", `Close ${session.name}`);
+      close.innerHTML =
+        `<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 1l8 8M9 1l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+      close.onclick = (event) => {
+        event.stopPropagation();
+        destroy(session);
+      };
+      row.append(close);
+
+      row.onclick = () => select(session);
+      row.onkeydown = (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          select(session);
+        }
+      };
+      return row;
+    }
+
+    function sessionIndex(session) {
+      const index = sessions.indexOf(session);
+      return index >= 0 ? index + 1 : session.id;
+    }
+
+    function paintRow(session) {
+      session.row.querySelector(".name").textContent = session.name;
+      const on = session === active;
+      // Index block reports activity, name block reports selection. One meaning each.
+      const busy = session.row.dataset.live === "true" && !session.dead;
+      renderPowerline(session.row.querySelector(".session-pl"), [
+        { cls: busy ? "pl-live" : "pl-idle", text: String(sessionIndex(session)) },
+        {
+          cls: session.dead ? "pl-dead" : (on ? "pl-place" : "pl-idle"),
+          text: session.name,
+        },
+      ]);
+      session.row.querySelector(".tail").textContent = session.tail;
+      session.row.dataset.dead = String(session.dead);
+    }
+
+    function select(session) {
+      active = session;
+      for (const other of sessions) {
+        const on = other === session;
+        other.pane.dataset.active = String(on);
+        other.row.setAttribute("aria-current", String(on));
+        paintRow(other);
+      }
+      empty.hidden = true;
+      requestAnimationFrame(() => {
+        session.fit.fit();
+        session.term.focus();
+      });
+    }
+
+    function destroy(session) {
+      session.socket.close();
+      session.term.dispose();
+      session.pane.remove();
+      session.row.remove();
+      sessions.splice(sessions.indexOf(session), 1);
+      for (const other of sessions) paintRow(other);
+      if (active === session) {
+        active = null;
+        const next = sessions[sessions.length - 1];
+        if (next) select(next);
+        else empty.hidden = false;
+      }
+    }
+
+    addEventListener("resize", () => active?.fit.fit());
+    function isShortcut(event) {
+      if (!(event.metaKey || event.ctrlKey) || event.altKey) return false;
+      return event.key.toLowerCase() === "t" || /^[1-9]$/.test(event.key);
+    }
+
+    addEventListener("keydown", (event) => {
+      if (!isShortcut(event)) return;
+      if (event.key.toLowerCase() === "t") {
+        event.preventDefault();
+        create();
+      } else if (/^[1-9]$/.test(event.key)) {
+        const target = sessions[Number(event.key) - 1];
+        if (target) {
+          event.preventDefault();
+          select(target);
+        }
+      }
+    });
+
+    document.getElementById("new").onclick = create;
+    document.getElementById("empty-new").onclick = create;
+
+    const prefsEl = document.getElementById("prefs");
+    const railSeg = document.getElementById("seg-rail");
+    const promptSeg = document.getElementById("seg-prompt");
+    const tintEl = document.getElementById("pref-tint");
+    const faceEl = document.getElementById("pref-face");
+    const sizeEl = document.getElementById("pref-size");
+    const leadEl = document.getElementById("pref-lead");
+    const sizeOut = document.getElementById("pref-size-out");
+    const leadOut = document.getElementById("pref-lead-out");
+
+    function segValue(group, fallback) {
+      return group.querySelector('[aria-checked="true"]')?.dataset.value ?? fallback;
+    }
+
+    function paintSeg(group, value) {
+      for (const option of group.querySelectorAll("button")) {
+        const on = option.dataset.value === value;
+        option.setAttribute("aria-checked", String(on));
+        option.tabIndex = on ? 0 : -1;
+      }
+    }
+
+    // Each Blocks option shows the real thing, drawn by the same renderer the app uses.
+    function paintSamples() {
+      renderPowerline(document.getElementById("pv-rail"), [
+        { cls: "pl-live", text: "3" },
+        { cls: "pl-place", text: "term 3" },
+      ]);
+      renderPowerline(document.getElementById("pv-prompt"), [
+        { cls: "pl-live", text: "you" },
+        { cls: "pl-name", text: hostLabel },
+        { cls: "pl-place", text: "~/dev" },
+      ]);
+    }
+
+    function loadSettings() {
+      try {
+        return JSON.parse(localStorage.getItem("cmux1.settings.v1") || "{}");
+      } catch {
+        return {};
+      }
+    }
+
+    function applySettings(next, save = true) {
+      const previousTint = settings.tint;
+      settings = {
+        rail: next.rail === "powerline" ? "powerline" : "classic",
+        prompt: next.prompt === "blocks" ? "blocks" : "native",
+        tint: next.tint === true,
+        face: FACES[next.face] ? next.face : DEFAULTS.face,
+        size: Math.min(20, Math.max(10, Number(next.size) || DEFAULTS.size)),
+        lead: Math.min(2, Math.max(1, Number(next.lead) || DEFAULTS.lead)),
+      };
+
+      document.body.dataset.railStyle = settings.rail;
+      document.documentElement.style.setProperty("--font-term", currentFace());
+      paintSeg(railSeg, settings.rail);
+      paintSeg(promptSeg, settings.prompt);
+      tintEl.checked = settings.tint;
+      faceEl.value = settings.face;
+      sizeEl.value = String(settings.size);
+      leadEl.value = String(settings.lead);
+      sizeOut.textContent = String(settings.size);
+      leadOut.textContent = settings.lead.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+
+      for (const session of sessions) {
+        session.term.options.fontFamily = currentFace();
+        session.term.options.fontSize = settings.size;
+        session.term.options.lineHeight = settings.lead;
+        if (previousTint !== settings.tint) session.tint = FileTint.createState();
+        session.fit.fit();
+        paintRow(session);
+      }
+      paintBrand();
+
+      if (save) localStorage.setItem("cmux1.settings.v1", JSON.stringify(settings));
+    }
+
+    function settingsFromControls() {
+      return {
+        rail: segValue(railSeg, DEFAULTS.rail),
+        prompt: segValue(promptSeg, DEFAULTS.prompt),
+        tint: tintEl.checked,
+        face: faceEl.value,
+        size: sizeEl.value,
+        lead: leadEl.value,
+      };
+    }
+
+    applySettings({ ...DEFAULTS, ...loadSettings() }, false);
+    for (const group of [railSeg, promptSeg]) {
+      group.addEventListener("click", (event) => {
+        const option = event.target.closest("button");
+        if (!option) return;
+        paintSeg(group, option.dataset.value);
+        applySettings(settingsFromControls());
+      });
+      group.addEventListener("keydown", (event) => {
+        const step = { ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1 }[event.key];
+        if (!step) return;
+        event.preventDefault();
+        const options = [...group.querySelectorAll("button")];
+        const at = options.findIndex((o) => o.getAttribute("aria-checked") === "true");
+        const next = options[(at + step + options.length) % options.length];
+        paintSeg(group, next.dataset.value);
+        next.focus();
+        applySettings(settingsFromControls());
+      });
+    }
+    tintEl.addEventListener("change", () => applySettings(settingsFromControls()));
+    faceEl.addEventListener("change", () => applySettings(settingsFromControls()));
+    sizeEl.addEventListener("input", () => applySettings(settingsFromControls()));
+    leadEl.addEventListener("input", () => applySettings(settingsFromControls()));
+    document.getElementById("prefs-open").onclick = () => prefsEl.showModal();
+    document.getElementById("prefs-done").onclick = () => prefsEl.close();
+    document.getElementById("prefs-x").onclick = () => prefsEl.close();
+    document.getElementById("prefs-reset").onclick = () => applySettings(DEFAULTS);
+    prefsEl.addEventListener("click", (event) => {
+      if (event.target === prefsEl) prefsEl.close();
+    });
+
+    create();
+    </script>
+  </body>
+</html>

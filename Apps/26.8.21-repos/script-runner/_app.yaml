@@ -1,0 +1,14 @@
+name: "Script Runner"
+description: "Discover and run local scripts in draggable output windows."
+updated: "2026-08-21"
+icon: "ph:terminal-window"
+color: "#6fd6c4"
+appspace: "local_Apps"
+sections:
+  - "Developer Tools"
+tags:
+  - scripts
+  - automation
+  - terminal
+  - Deno
+entry: index.html
