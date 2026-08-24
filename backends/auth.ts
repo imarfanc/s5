@@ -6,7 +6,7 @@
  * gated on that cookie. No user records, no database.
  */
 
-const COOKIE_NAME = "sites5_session";
+const COOKIE_NAME = "s5_session";
 const SESSION_SECONDS = 60 * 60 * 24 * 30;
 const encoder = new TextEncoder();
 

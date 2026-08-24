@@ -251,6 +251,6 @@ no media-query duplicates beyond the one dark `--glass-bg` override.
 ## Notes
 
 - `CLAUDE.md` and `AGENTS.md` are byte-identical on purpose. Change both.
-- Frontend state is one `localStorage` key, `sites5.frontend`; deep links are `#app=<id>`.
+- Frontend state is one `localStorage` key, `s5.frontend`; deep links are `#app=<id>`.
 - Folders under `Apps/` starting with `_` or `.` are skipped by discovery, which is why
   `_templates/` is not an app.

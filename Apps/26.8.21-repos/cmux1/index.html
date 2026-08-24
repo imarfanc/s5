@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>cmux1</title>
     <link rel="icon" type="image/svg+xml" sizes="any" href="./favicon.svg?v=2" />
-    <link rel="stylesheet" href="/apps/_shared/1-repos/xterm.css" />
+    <link rel="stylesheet" href="/apps/_shared/cmux1/xterm.css" />
     <style>
     :root {
       color-scheme: light dark;
@@ -92,7 +92,7 @@
 
     @font-face {
       font-family: "cmux1 Mono";
-      src: url("/api/apps/1-repos/font") format("truetype");
+      src: url("/api/apps/cmux1/font") format("truetype");
       font-display: block;
     }
 
@@ -865,9 +865,9 @@
       </dialog>
     </main>
 
-    <script src="/apps/_shared/1-repos/xterm.js"></script>
-    <script src="/apps/_shared/1-repos/xterm-addon-fit.js"></script>
-    <script src="/apps/_shared/1-repos/file-tint.js"></script>
+    <script src="/apps/_shared/cmux1/xterm.js"></script>
+    <script src="/apps/_shared/cmux1/xterm-addon-fit.js"></script>
+    <script src="/apps/_shared/cmux1/file-tint.js"></script>
     <script>
     const stage = document.getElementById("stage");
     const list = document.getElementById("sessions");
@@ -966,7 +966,7 @@
       paintSamples();
     }
 
-    fetch("/api/apps/1-repos/config")
+    fetch("/api/apps/cmux1/config")
       .then((r) => r.json())
       .then((c) => {
         if (c.host) hostLabel = c.host;
@@ -1021,7 +1021,7 @@
       term.attachCustomKeyEventHandler((event) => !isShortcut(event));
 
       const socket = new WebSocket(
-        `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/api/apps/1-repos/terminal` +
+        `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/api/apps/cmux1/terminal` +
           `?cols=${term.cols}&rows=${term.rows}&prompt=${settings.prompt}`,
       );
       const session = {

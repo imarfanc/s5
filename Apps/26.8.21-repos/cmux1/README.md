@@ -9,14 +9,14 @@ the rail shows what each one is doing without you switching to it.
 - `_app.yaml` holds the metadata the sites5 sidebar reads.
 - `favicon.svg` is the app icon.
 
-The frontend loads the vendored terminal assets from `/apps/_shared/1-repos/` and talks to the
-backend in `backends/apps/1-repos/route.ts`.
+The frontend loads the vendored terminal assets from `/apps/_shared/cmux1/` and talks to the
+backend in `backends/apps/cmux1/route.ts`.
 
 ## Backend endpoints
 
-- `GET /api/apps/1-repos/config` returns client configuration and the hostname.
-- `GET /api/apps/1-repos/font` serves the terminal font.
-- `GET /api/apps/1-repos/terminal` upgrades to a WebSocket terminal session.
+- `GET /api/apps/cmux1/config` returns client configuration and the hostname.
+- `GET /api/apps/cmux1/font` serves the terminal font.
+- `GET /api/apps/cmux1/terminal` upgrades to a WebSocket terminal session.
 
 Each terminal runs the configured login shell, falling back to `/bin/bash`. Run the site with
 `deno task dev` and open `/apps/26.8.21-repos/cmux1/`.

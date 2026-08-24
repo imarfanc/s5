@@ -47,7 +47,7 @@ const WATCH_CANDIDATES = [
 ];
 
 const root = decodeURIComponent(new URL("../../", import.meta.url).pathname);
-const port = OVERRIDES.port ?? Number(Deno.env.get("PORT") ?? "8891");
+const port = OVERRIDES.port ?? Number(Deno.env.get("PORT") ?? "8889");
 
 function exists(path: string): boolean {
   try {

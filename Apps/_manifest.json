@@ -7,13 +7,6 @@
       "color": "#6fd6c4",
       "sections": [
         {
-          "name": "Automation",
-          "sort_name": "Automation",
-          "icon": "",
-          "color": "",
-          "sections": []
-        },
-        {
           "name": "Developer Tools",
           "sort_name": "Developer Tools",
           "icon": "",
@@ -25,13 +18,6 @@
           "sort_name": "Files",
           "icon": "lucide:folder-search",
           "color": "#c45c26",
-          "sections": []
-        },
-        {
-          "name": "Repositories",
-          "sort_name": "Repositories",
-          "icon": "",
-          "color": "",
           "sections": []
         },
         {
@@ -48,13 +34,6 @@
       "icon": "thesvg-color:meta",
       "color": "",
       "sections": [
-        {
-          "name": "sqlite",
-          "sort_name": "sqlite",
-          "icon": "lucide:database",
-          "color": "#0f766e",
-          "sections": []
-        },
         {
           "name": "testing",
           "sort_name": "testing",
@@ -76,13 +55,6 @@
               "sections": []
             }
           ]
-        },
-        {
-          "name": "testing2",
-          "sort_name": "testing2",
-          "icon": "",
-          "color": "",
-          "sections": []
         }
       ]
     }
@@ -160,48 +132,24 @@
       "children": []
     },
     {
-      "id": "26-8-21-repos-skills-i1",
-      "name": "Skills Hub",
-      "sort_name": "Skills Hub",
-      "description": "Browse a local skill library and install it into agent-specific skill folders.",
-      "updated": "2026-08-21",
-      "icon": "ph:books",
-      "color": "#1f4dff",
+      "id": "26-8-24-scripts-runner2",
+      "name": "Scripts Runner 2",
+      "sort_name": "Scripts Runner 2",
+      "description": "Run macOS permissions, Finder defaults, and a multi-language smoke test.",
+      "updated": "2026-08-24",
+      "icon": "ph:terminal-window",
+      "color": "#6fd6c4",
       "appspace": "local_Apps",
       "sections": [
         "Developer Tools"
       ],
       "tags": [
-        "skills",
-        "agents",
-        "Claude",
-        "Cursor"
+        "scripts",
+        "automation",
+        "terminal"
       ],
-      "path": "26.8.21-repos/skills-i1",
-      "url": "/apps/26.8.21-repos/skills-i1/index.html",
-      "store": "",
-      "db": "",
-      "children": []
-    },
-    {
-      "id": "26-8-21-repos-terminal",
-      "name": "Terminal",
-      "sort_name": "Terminal",
-      "description": "A single-session shell against the same PTY backend as cmux1.",
-      "updated": "2026-08-21",
-      "icon": "lucide:terminal",
-      "color": "#6fd6c4",
-      "appspace": "local_Apps",
-      "sections": [
-        "Terminals"
-      ],
-      "tags": [
-        "terminal",
-        "shell",
-        "termlet"
-      ],
-      "path": "26.8.21-repos/terminal",
-      "url": "/apps/26.8.21-repos/terminal/index.html",
+      "path": "26.8.24/scripts-runner2",
+      "url": "/apps/26.8.24/scripts-runner2/index.html",
       "store": "",
       "db": "",
       "children": []

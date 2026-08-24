@@ -13,10 +13,9 @@ import {
   handleAuth,
   isAuthenticated,
 } from "../auth.ts";
-import { handleReposTerminal } from "../apps/1-repos/route.ts";
+import { handleCmux1 } from "../apps/cmux1/route.ts";
 import { handleFiles } from "../apps/files-i1/route.ts";
 import { handleScriptRunner } from "../apps/script-runner/route.ts";
-import { handleSkillsHub } from "../apps/skills-i1/route.ts";
 import { handleApps } from "./apps.ts";
 import { handleData } from "./data.ts";
 import { handleDb } from "./db.ts";
@@ -25,10 +24,9 @@ import { handleSqliteInspect } from "./sqlite-inspect.ts";
 import { handleStatic } from "./static.ts";
 
 const HANDLERS = [
-  handleReposTerminal,
+  handleCmux1,
   handleFiles,
   handleScriptRunner,
-  handleSkillsHub,
   handleApps,
   handleData,
   handleDb,
