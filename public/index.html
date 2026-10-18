@@ -1112,7 +1112,15 @@
 
     function renderRoot() {
       const root = currentAppspace();
-      if (!root) return;
+      refs.rootCycle.disabled = !root;
+      refs.rootMenuToggle.disabled = !root;
+      if (!root) {
+        refs.rootName.textContent = "s5";
+        refs.rootDescription.textContent = "0 apps";
+        refs.rootMenu.replaceChildren();
+        setRootMenu(false);
+        return;
+      }
       refs.rootName.textContent = root.name;
       const count = rootApps().length;
       refs.rootDescription.textContent = `${count} app${count === 1 ? "" : "s"}`;
@@ -1726,7 +1734,10 @@
       refs.previewFrame.title = "Appspace overview";
       refs.previewEmpty.hidden = false;
       refs.previewAppspace.textContent = root?.name ?? "s5";
-      document.title = `${root?.name ?? "s5"} · s5`;
+      document.title = root ? `${root.name} · s5` : "s5";
+      document.querySelector("#preview-instruction").textContent = apps.length
+        ? "Select an app on the left."
+        : "No apps remain in this gallery.";
       if (location.hash) {
         history.replaceState(null, "", location.pathname + location.search);
       }

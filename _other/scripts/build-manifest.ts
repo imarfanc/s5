@@ -35,7 +35,7 @@ try {
   fail(`could not read Apps/: ${errorMessage(error)}`);
 }
 
-if (manifest.apps.length === 0) fail("no apps found under Apps/ — refusing to write an empty tree");
+// An empty gallery is valid after its apps have moved to another repository.
 
 const next = serialise(manifest);
 const committed = await readCommitted();

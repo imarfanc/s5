@@ -250,11 +250,6 @@ export async function buildDiscovery(): Promise<Manifest> {
     apps,
   };
 
-  if (markers.length === 0) {
-    console.error(
-      "Discovery found no _app.yaml markers — the file listing is probably incomplete.",
-    );
-  }
   return discovery;
 }
 
@@ -262,8 +257,7 @@ export async function buildDiscovery(): Promise<Manifest> {
 async function readManifest(): Promise<Manifest | null> {
   try {
     const parsed = JSON.parse(await readTextFile(MANIFEST_FILE));
-    const usable = Array.isArray(parsed?.apps) && parsed.apps.length > 0 &&
-      Array.isArray(parsed?.appspaces);
+    const usable = Array.isArray(parsed?.apps) && Array.isArray(parsed?.appspaces);
     return usable ? parsed as Manifest : null;
   } catch {
     return null;
@@ -286,8 +280,6 @@ export async function discover(): Promise<Discovery> {
   manifest ??= await buildDiscovery();
 
   const discovery: Discovery = { ...manifest, checkout: localCheckout() };
-  if (discovery.apps.length === 0) return discovery;
-
   cached = discovery;
   return cached;
 }
